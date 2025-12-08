@@ -1,0 +1,15 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words:
+  - datname
+  - domcontentloaded
+  - modelcontextprotocol
+  - pgdumplib
+  - pixi
+  - pypi
+  - topbar
+  - usename
+ignoreWords: []
+import: []
