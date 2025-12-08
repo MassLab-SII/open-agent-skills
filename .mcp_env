@@ -1,0 +1,20 @@
+# Example: OpenAI (other models can also use it)
+OPENAI_BASE_URL="http://101.47.31.49:4000"
+OPENAI_API_KEY="sk-3blkZv71U7lH1TQbVNOX6A"
+
+# Optional: Notion (only for Notion tasks)
+SOURCE_NOTION_API_KEY="your-source-notion-api-key"
+EVAL_NOTION_API_KEY="your-eval-notion-api-key"
+EVAL_PARENT_PAGE_TITLE="MCPMark Eval Hub"
+PLAYWRIGHT_BROWSER="chromium"   # chromium | firefox
+PLAYWRIGHT_HEADLESS="True"
+
+# Optional: GitHub (only for GitHub tasks)
+GITHUB_TOKENS="token1,token2"   # token pooling for rate limits
+GITHUB_EVAL_ORG="your-eval-org"
+
+# Optional: Postgres (only for Postgres tasks)
+POSTGRES_HOST="localhost"
+POSTGRES_PORT="5432"
+POSTGRES_USERNAME="postgres"
+POSTGRES_PASSWORD="password"
