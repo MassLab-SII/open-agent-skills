@@ -1,4 +1,4 @@
-Please use FileSystem tools to finish the following task:
+Please use FileSystem tools (or skills)to finish the following task:
 
 ### Task Description
 
