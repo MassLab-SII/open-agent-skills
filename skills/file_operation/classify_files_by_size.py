@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-File Size Classification Script (Using tool.py)
+File Size Classification Script (Using utils.py)
 ================================================
 
 This script classifies files in a directory into subdirectories based on their file sizes.
 It uses the FileSystemTools wrapper for cleaner code.
 
 Usage:
-    python classify_files_by_size_v2.py <target_directory> [--small <bytes>] [--large <bytes>] 
+    python classify_files_by_size.py <target_directory> [--small <bytes>] [--large <bytes>] 
                                         [--small-category <name>] [--medium-category <name>] [--large-category <name>]
 
 Example:
-    python classify_files_by_size_v2.py /path/to/directory --small 300 --large 700
+    python classify_files_by_size.py /path/to/directory --small 300 --large 700
 """
 
 import asyncio
@@ -119,13 +119,13 @@ async def main():
         epilog="""
 Examples:
   # Use default thresholds (300 and 700 bytes)
-  python classify_files_by_size_v2.py /path/to/directory
+  python classify_files_by_size.py /path/to/directory
   
   # Custom thresholds
-  python classify_files_by_size_v2.py /path/to/directory --small 1024 --large 10240
+  python classify_files_by_size.py /path/to/directory --small 1024 --large 10240
   
   # Custom category names
-  python classify_files_by_size_v2.py /path/to/directory --small-category tiny --medium-category normal --large-category huge
+  python classify_files_by_size.py /path/to/directory --small-category tiny --medium-category normal --large-category huge
         """
     )
     

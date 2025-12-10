@@ -33,4 +33,4 @@
 # # [succeed] python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks votenet/debugging --models gpt-5 --k 3  
 # python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks votenet/requirements_writing --models gpt-5 --k 3  
 
-python -m pipeline --exp-name file_property__time_classification --mcp filesystem --tasks file_property/time_classification --models gpt-5 --k 1
+# python -m pipeline --exp-name file_context --mcp filesystem --tasks file_context --models gpt-5 --k 1

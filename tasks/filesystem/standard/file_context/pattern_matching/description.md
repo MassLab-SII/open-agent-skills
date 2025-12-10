@@ -1,8 +1,8 @@
-Please use FileSystem tools to finish the following task:
+Please use FileSystem tools (or skills) to finish the following task:
 
 ### Task Description
 
-Your task is to find all files that contain a substring of 30 or more characters that also appears in `large_file.txt`. **You are not allowed to use python code.**
+Your task is to find all files that contain a substring of 30 or more characters that also appears in `large_file.txt`. **You are not allowed to use python code. But you can use our skills**
 
 ### Task Objectives
 

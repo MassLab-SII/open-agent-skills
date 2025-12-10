@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-File Time Classification Script (Using tool.py)
+File Time Classification Script (Using utils.py)
 ================================================
 
 This script classifies files in a directory into subdirectories based on their creation time.
