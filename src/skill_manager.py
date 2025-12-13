@@ -308,7 +308,10 @@ class SkillManager:
             shell_cmd = ["/bin/bash", "-c", full_command]
         else:
             logger.warning(f"Virtual environment not found at {self.venv_path}, running without venv")
-            shell_cmd = reconstructed_command.split()
+            # revised by yxy
+            # shell_cmd = reconstructed_command.split()
+            import shlex
+            shell_cmd = shlex.split(reconstructed_command)
         
         logger.info(f"Executing: {reconstructed_command}")
         logger.info(f"Working directory: {cwd}")
