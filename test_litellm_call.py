@@ -56,15 +56,16 @@ async def test_litellm_call():
     
     # Build completion parameters (similar to original code)
     completion_kwargs = {
-        "model": "openai/gpt-5",
+        "model": "gzy/claude-4.5-sonnet",
         "api_key": api_key,
         "base_url": base_url,
         "messages": messages,
+
     }
     
     # ⚠️ Temporarily not adding tools, test basic call first
-    completion_kwargs["tools"] = tools
-    completion_kwargs["tool_choice"] = "auto"
+    # completion_kwargs["tools"] = tools
+    # completion_kwargs["tool_choice"] = "auto"
     
     # print("⚠️  Note: Temporarily disabling tool calls, testing basic API first")
     
@@ -299,6 +300,7 @@ async def main():
     print("\n")
     
     try:
+        await test_litellm_call()
         # Test 0: View raw API response (for debugging)
         # await test_raw_api()
         
@@ -306,7 +308,7 @@ async def main():
         # await test_litellm_call()
         
         # Test 2: Concurrent call demo (showing non-blocking advantages)
-        await test_concurrent_calls()
+        # await test_concurrent_calls()
         
         print("\n" + "=" * 60)
         print("All tests completed! ✓")
