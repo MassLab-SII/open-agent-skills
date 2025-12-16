@@ -737,6 +737,7 @@ class MCPMarkAgent(BaseMCPAgent):
         max_consecutive_failures = 3
         hit_turn_limit = False
         ended_normally = False
+        skill_context_added = None
         
         # # Convert functions to tools format for newer models
         # tools = [{"type": "function", "function": func} for func in functions] if functions else None
@@ -851,13 +852,6 @@ class MCPMarkAgent(BaseMCPAgent):
                     # deeply dump the message to ensure we capture all fields
                     message_dict = message.model_dump() if hasattr(message, 'model_dump') else dict(message)
 
-                    # # Explicitly preserve function_call if present (even if tool_calls exists),
-                    # # as it may contain provider-specific metadata (e.g. Gemini thought_signature)
-                    # if hasattr(message, 'function_call') and message.function_call:
-                    #     # Ensure it's in the dict if model_dump missed it or it was excluded
-                    #     if 'function_call' not in message_dict or not message_dict['function_call']:
-                    #         fc = message.function_call
-                    #         message_dict['function_call'] = fc.model_dump() if hasattr(fc, 'model_dump') else fc
 
                 # Log assistant's text content if present and check for skill triggers
                 assistant_text = ""
@@ -896,26 +890,27 @@ class MCPMarkAgent(BaseMCPAgent):
                     command_results = self._extract_and_execute_commands(assistant_text, working_dir)
 
                 # Add skill context or command results before processing tool calls
-                skill_context_added = False
+                if skill_context_added is None:
+                    skill_context_added = False
                 
                 # If skill was just triggered, add full skill documentation
                 if self._active_skill and turn_count == 0:
                     skill_context = self._load_skill_context(self._active_skill)
+
+                    messages.append(message_dict)
+                    turn_count += 1
+                    self._update_progress(messages, total_tokens, turn_count)
+
                     if skill_context:
-                        messages.append(message_dict)
-                        turn_count += 1
-                        self._update_progress(messages, total_tokens, turn_count)
-                        
                         messages.append({"role": "user", "content": skill_context})
                         self._update_progress(messages, total_tokens, turn_count)
                         skill_context_added = True
                 
                 # If commands were executed, add results
                 if command_results:
-                    if not skill_context_added:
-                        messages.append(message_dict)
-                        turn_count += 1
-                        self._update_progress(messages, total_tokens, turn_count)
+                    messages.append(message_dict)
+                    turn_count += 1
+                    self._update_progress(messages, total_tokens, turn_count)
                     
                     results_text = self._format_command_results(command_results)
                     if turn_count > 1:
@@ -924,69 +919,13 @@ class MCPMarkAgent(BaseMCPAgent):
                     # Continue to next iteration to let model process the results
                     continue
                 
-                # Check for tool calls (newer format)
-                if hasattr(message, 'tool_calls') and message.tool_calls:
-                    # if not skill_context_added:
-                    #     messages.append(message_dict)
-                    #     turn_count += 1
-                    #     # Update progress after assistant with tool calls
-                    #     self._update_progress(messages, total_tokens, turn_count)
-                    # # Process tool calls
-                    # for tool_call in message.tool_calls:
-                    #     func_name = tool_call.function.name
-                    #     func_args = json.loads(tool_call.function.arguments)
-                        
-                    #     try:
-                    #         result = await asyncio.wait_for(
-                    #             mcp_server.call_tool(func_name, func_args),
-                    #             timeout=60
-                    #         )
-                    #         messages.append({
-                    #             "role": "tool",
-                    #             "tool_call_id": tool_call.id,
-                    #             "content": json.dumps(result, cls=CustomJSONEncoder)
-                    #         })
-                    #     except asyncio.TimeoutError:
-                    #         error_msg = f"Tool call '{func_name}' timed out after 60 seconds"
-                    #         logger.error(error_msg)
-                    #         messages.append({
-                    #             "role": "tool",
-                    #             "tool_call_id": tool_call.id,
-                    #             "content": f"Error: {error_msg}"
-                    #         })
-                    #     except Exception as e:
-                    #         logger.error(f"Tool call failed: {e}")
-                    #         messages.append({
-                    #             "role": "tool",
-                    #             "tool_call_id": tool_call.id,
-                    #             "content": f"Error: {str(e)}"
-                    #         })   
-                            
-                    #     # Format arguments for display (truncate if too long)
-                    #     args_str = json.dumps(func_args, separators=(",", ": "))
-                    #     display_arguments = args_str[:140] + "..." if len(args_str) > 140 else args_str
-                        
-                    #     # Log with ANSI color codes (bold tool name, dim gray arguments)
-                    #     logger.info(f"| \033[1m{func_name}\033[0m \033[2;37m{display_arguments}\033[0m")
-                        
-                    #     if tool_call_log_file:
-                    #         with open(tool_call_log_file, 'a', encoding='utf-8') as f:
-                    #             f.write(f"| {func_name} {args_str}\n")
-                    # # Update progress after tool results appended
-                    # self._update_progress(messages, total_tokens, turn_count)
-                    continue
-                else:
-                    # No tool calls - check if we need to add skill context or command results
-                    if skill_context_added or command_results:
-                        # Already handled above, continue to next iteration
-                        continue
-                    
-                    # Log end reason
-                    if not choices:
-                        logger.info("|\n|\n| Task ended with no messages generated by the model.")
-                    elif choices[0].finish_reason == "stop":
-                        logger.info("|\n|\n| Task ended with the finish reason from messages being 'stop'.")
-                    
+                if not choices:
+                    logger.info("|\n|\n| Task ended with no messages generated by the model.")
+                    ended_normally = True
+                    break
+                elif choices[0].finish_reason == "stop":
+                    logger.info("|\n|\n| Task ended with the finish reason from messages being 'stop'.")
+                
                     # No tool/function call, add message and we're done
                     messages.append(message_dict)
                     turn_count += 1
