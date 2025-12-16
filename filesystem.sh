@@ -35,4 +35,7 @@
 
 # python -m pipeline --exp-name file_context --mcp filesystem --tasks file_context --models gpt-5 --k 1
 
-python -m pipeline --exp-name folder_structure --mcp filesystem --tasks folder_structure --models gpt-5 --k 1
+# python -m pipeline --exp-name folder_structure --mcp filesystem --tasks folder_structure --models gpt-5 --k 1
+
+
+python -m pipeline --exp-name test_shopping --mcp playwright_webarena --tasks shopping/advanced_product_analysis --models claude-sonnet-4.5 --k 1
