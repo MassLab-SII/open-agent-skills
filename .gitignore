@@ -19,6 +19,8 @@ notion-sdk-py/
 github_state/*
 traj
 
+.mcp_env
+claude-sonnet-4__notion/
 # for playwright cookies
 notion_state.json
 
