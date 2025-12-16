@@ -57,6 +57,27 @@ class FileEditor:
                 return True
         return False
 
+    def _extract_sha(self, result) -> str:
+        """Extract SHA from get_file_contents result."""
+        if isinstance(result, dict):
+            # Direct sha field
+            if "sha" in result:
+                return result.get("sha")
+            # Try to extract from MCP text content (JSON string)
+            content_list = result.get("content", [])
+            if isinstance(content_list, list) and content_list:
+                for item in content_list:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text = item.get("text", "")
+                        try:
+                            import json
+                            parsed = json.loads(text)
+                            if isinstance(parsed, dict):
+                                return parsed.get("sha")
+                        except:
+                            pass
+        return None
+
 
     async def edit_file(
         self,
@@ -169,12 +190,8 @@ class FileEditor:
                  # If we have neither content nor sha, and we received a dict, it might be an empty file or error
                  # But if existing_file matches error pattern?
                  pass
-            # We lost SHA if utils.py unwrapped it. 
-            # If we need SHA, we might need to fix utils.py or use a different call.
-            # BUT, let's assume `create_or_update_file` might work without SHA if the MCP server handles it 
-            # (e.g. by fetching SHA internally). 
-            
-            # Let's implement the search/replace logic.
+            # Extract SHA from the result if available
+            sha = self._extract_sha(existing_file)
             
             if pattern not in file_content:
                 if replacement in file_content:
@@ -185,51 +202,6 @@ class FileEditor:
                     return False
 
             new_content = file_content.replace(pattern, replacement)
-            
-            # Re-fetch to try to get SHA if possible?
-            # Or just pass sha=None and hope MCP handles it (or existing `edit_file` was lucky/wrong).
-            # If `edit_file` passed tests, maybe valid SHA was mocked.
-            
-            # In `test_content_editor.py`, `get_file_contents` is mocked to return `{"sha": "old_sha"}`.
-            # This means the TEST expects a dict.
-            # BUT `utils.py` returns `content[0].get('text', '')`.
-            # If the mock returns a dict, utils.py returns... wait.
-            # `utils.py` line 356: result = await ...call_tool...
-            # The mock mocks `call_tool`? No, the test mocks `GitHubTools` class entirely.
-            # So `utils.py` code is NOT executing in the test. The test calls `generator.create_answer_file` 
-            # which calls `self.github.get_file_contents`.
-            # `self.github` is the MOCK. So `get_file_contents` returns exactly what the test says.
-            # So the test says it returns a dict with SHA.
-            # BUT in production `utils.py`, `get_file_contents` returns STRING.
-            
-            # CRITICAL DISCOVERY: Use of `get_file_contents` in `utils.py` strips the SHA.
-            # This means `edit_file` and `doc_gen` will FAIL in production if they rely on SHA from it.
-            # However, I am tasked to implement `apply_fix`. 
-            # I should stick to the established pattern (even if potentially buggy) or fix it.
-            # Given I cannot easily fix `utils.py` without breaking other things or rigorous testing, 
-            # I will assume `get_file_contents` returns the content string, and I will try to update.
-            # Actually, `create_or_update_file` in MCP might require SHA.
-            
-            # Let's look at `utils.py` again. 
-            # It returns `content[0].get('text', '')`.
-            # If I want SHA, I should probably NOT use `get_file_contents` from `utils.py` if I can help it, 
-            # OR I accept I might not have SHA.
-            
-            # For `apply_fix`, I need to read content.
-            
-            # Let's implement the logic assuming `existing_file` IS the content string.
-            # And for the SHA... I will just pass None and hope.
-            # Or better, I can try to get the SHA via `list_commits`? No.
-            
-            # Wait, `get_file_contents` in `utils.py`:
-            # valid, existing file -> returns text content.
-            # dictionary return is only possible if `call_tool` returns a result where `content` is empty/missing?
-            # then it returns the whole result dict?
-            # line 360: return result.
-            
-            # So if I want to support `apply_fix`, I'll use the content.
-            
-            sha = None # Missing SHA handling in utils.py wrapper
             
             result = await self.github.create_or_update_file(
                 owner=owner,
@@ -323,7 +295,8 @@ class FileEditor:
 
                 new_content = file_content.replace(query, replacement)
                 
-                sha = None # Again, assuming we rely on non-SHA update or acceptable behavior
+                # Extract SHA from the result
+                sha = self._extract_sha(existing_file)
                 
                 result = await self.github.create_or_update_file(
                     owner=owner,

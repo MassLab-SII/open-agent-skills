@@ -182,25 +182,52 @@ class PRInvestigator:
             return []
 
     def _parse_search_result(self, result: Any) -> List[Dict[str, Any]]:
-        """Parse search API result"""
+        """Parse search API result, handling MCP response format"""
+        # Handle MCP format: {'content': [{'type': 'text', 'text': '...'}]}
         if isinstance(result, dict):
+            content_list = result.get("content", [])
+            if isinstance(content_list, list) and content_list:
+                for item in content_list:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text = item.get("text", "")
+                        try:
+                            parsed = json.loads(text)
+                            if isinstance(parsed, dict):
+                                return parsed.get('items', [])
+                        except json.JSONDecodeError:
+                            pass
+            # Direct dict with items
             return result.get('items', [])
         if isinstance(result, str):
             try:
                 parsed = json.loads(result)
                 return parsed.get('items', []) if isinstance(parsed, dict) else []
-            except:
+            except json.JSONDecodeError:
                 return []
         return []
 
     def _parse_result(self, result: Any) -> Any:
-        """Parse general API result"""
-        if isinstance(result, (list, dict)):
+        """Parse general API result, handling MCP response format"""
+        # Handle MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+        if isinstance(result, dict):
+            content_list = result.get("content", [])
+            if isinstance(content_list, list) and content_list:
+                for item in content_list:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text = item.get("text", "")
+                        try:
+                            return json.loads(text)
+                        except json.JSONDecodeError:
+                            pass
+            # Direct dict (not MCP format)
+            if "content" not in result or not isinstance(result.get("content"), list):
+                return result
+        if isinstance(result, list):
             return result
         if isinstance(result, str):
             try:
                 return json.loads(result)
-            except:
+            except json.JSONDecodeError:
                 return []
         return []
 

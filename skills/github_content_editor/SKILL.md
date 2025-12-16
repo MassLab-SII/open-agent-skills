@@ -20,7 +20,7 @@ Create or update documentation files in the repository, including answer submiss
 
 ```bash
 # Submit an answer (creates/updates ANSWER.md)
-python doc_gen.py answer owner repo --content "048cd3b..." --message "Submit answer"
+python doc_gen.py answer owner repo --content "answer text" --message "Submit answer"
 
 # Specify a branch (if not default)
 python doc_gen.py answer owner repo --content "answer text" --message "Submit" --branch "master"

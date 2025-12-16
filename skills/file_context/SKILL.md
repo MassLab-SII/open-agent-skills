@@ -1,5 +1,5 @@
 ---
-name: file-context-analysis
+name: file_context
 description: This skill analyzes and organizes files based on their content. It provides tools for duplicate detection, file merging, file splitting, pattern matching, and text transformation. Use this when you need to work with file content rather than just file metadata.
 ---
 

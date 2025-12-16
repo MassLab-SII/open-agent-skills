@@ -177,57 +177,7 @@ class GitHubTools:
         """Exit async context manager"""
         await self.mcp_server.__aexit__(exc_type, exc, tb)
 
-    # ==================== Repository Management ====================
 
-    async def create_repository(self, name: str, description: Optional[str] = None, private: bool = False) -> Any:
-        """
-        Create a new GitHub repository in your account or specified organization
-        
-        Args:
-            name: Repository name
-            description: Repository description
-            private: Visibility
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"name": name, "private": private}
-            if description:
-                args["description"] = description
-            result = await self.mcp_server.call_tool("create_repository", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in create_repository: {e}")
-            return None
-
-    async def fork_repository(self, owner: str, repo: str, organization: Optional[str] = None) -> Any:
-        """
-        Fork a GitHub repository to your account or specified organization
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            organization: Optional organization to fork into
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo}
-            if organization:
-                args["organization"] = organization
-            result = await self.mcp_server.call_tool("fork_repository", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in fork_repository: {e}")
-            return None
 
     # ==================== Branch & Commit Management ====================
 
@@ -369,31 +319,7 @@ class GitHubTools:
             print(f"Error in create_or_update_file: {e}")
             return None
 
-    async def delete_file(self, owner: str, repo: str, path: str, message: str, branch: str, sha: str) -> Any:
-        """
-        Delete a file from a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            path: File path
-            message: Commit message
-            branch: Branch name
-            sha: File SHA
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "path": path, "message": message, "branch": branch, "sha": sha}
-            result = await self.mcp_server.call_tool("delete_file", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in delete_file: {e}")
-            return None
+
 
     async def get_file_contents(self, owner: str, repo: str, path: str, ref: Optional[str] = None, sha: Optional[str] = None) -> Any:
         """
@@ -472,28 +398,7 @@ class GitHubTools:
             print(f"Error in add_issue_comment: {e}")
             return None
 
-    async def assign_copilot_to_issue(self, owner: str, repo: str, issue_number: int) -> Any:
-        """
-        Assign Copilot to a specific issue in a GitHub repository.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            issue_number: Issue number
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "issue_number": issue_number}
-            result = await self.mcp_server.call_tool("assign_copilot_to_issue", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in assign_copilot_to_issue: {e}")
-            return None
+
 
     async def issue_read(self, owner: str, repo: str, issue_number: int, method: Optional[str] = None) -> Any:
         """
@@ -672,25 +577,7 @@ class GitHubTools:
 
     # ==================== Pull Requests ====================
 
-    async def add_comment_to_pending_review(self, **kwargs) -> Any:
-        """
-        Add review comment to the requester's latest pending pull request review. A pending review needs to already exist to call this (check with the user if not sure).
-        
-        Args:
-            **kwargs: Arguments to pass to the tool
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            result = await self.mcp_server.call_tool("add_comment_to_pending_review", kwargs)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in add_comment_to_pending_review: {e}")
-            return None
+
 
     async def create_pull_request(self, owner: str, repo: str, title: str, head: str, base: str, body: Optional[str] = None, draft: bool = False, maintainer_can_modify: bool = True) -> Any:
         """
@@ -826,28 +713,7 @@ class GitHubTools:
             print(f"Error in pull_request_review_write: {e}")
             return None
 
-    async def request_copilot_review(self, owner: str, repo: str, pull_number: int) -> Any:
-        """
-        Request a GitHub Copilot code review for a pull request. Use this for automated feedback on pull requests, usually before requesting a human reviewer.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            pull_number: Pull request number
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "pullNumber": pull_number}
-            result = await self.mcp_server.call_tool("request_copilot_review", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in request_copilot_review: {e}")
-            return None
+
 
     async def search_pull_requests(self, query: str, page: int = 1, per_page: int = 30) -> Any:
         """
@@ -905,98 +771,11 @@ class GitHubTools:
             print(f"Error in update_pull_request: {e}")
             return None
 
-    async def update_pull_request_branch(self, owner: str, repo: str, pull_number: int) -> Any:
-        """
-        Update the branch of a pull request with the latest changes from the base branch.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            pull_number: Pull request number
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "pullNumber": pull_number}
-            result = await self.mcp_server.call_tool("update_pull_request_branch", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in update_pull_request_branch: {e}")
-            return None
+
 
     # ==================== Releases & Tags ====================
 
-    async def get_latest_release(self, owner: str, repo: str) -> Any:
-        """
-        Get the latest release in a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo}
-            result = await self.mcp_server.call_tool("get_latest_release", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_latest_release: {e}")
-            return None
 
-    async def get_release_by_tag(self, owner: str, repo: str, tag: str) -> Any:
-        """
-        Get a specific release by its tag name in a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            tag: Tag name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "tag": tag}
-            result = await self.mcp_server.call_tool("get_release_by_tag", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_release_by_tag: {e}")
-            return None
-
-    async def get_tag(self, owner: str, repo: str, tag: str) -> Any:
-        """
-        Get details about a specific git tag in a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            tag: Tag name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "tag": tag}
-            result = await self.mcp_server.call_tool("get_tag", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_tag: {e}")
-            return None
 
     async def list_releases(self, owner: str, repo: str) -> Any:
         """
@@ -1086,135 +865,9 @@ class GitHubTools:
             print(f"Error in search_code: {e}")
             return None
 
-    async def search_repositories(self, query: str, page: int = 1, per_page: int = 30) -> Any:
-        """
-        Find GitHub repositories by name, description, readme, topics, or other metadata. Perfect for discovering projects, finding examples, or locating specific repositories across GitHub.
-        
-        Args:
-            query: Search query
-            page: Page number
-            per_page: Results per page
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"query": query, "page": page, "perPage": per_page}
-            result = await self.mcp_server.call_tool("search_repositories", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in search_repositories: {e}")
-            return None
 
-    async def search_users(self, query: str, page: int = 1, per_page: int = 30) -> Any:
-        """
-        Find GitHub users by username, real name, or other profile information. Useful for locating developers, contributors, or team members.
-        
-        Args:
-            query: Search query
-            page: Page number
-            per_page: Results per page
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"query": query, "page": page, "perPage": per_page}
-            result = await self.mcp_server.call_tool("search_users", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in search_users: {e}")
-            return None
 
-    # ==================== Teams & Users ====================
 
-    async def get_me(self) -> Any:
-        """
-        Get details of the authenticated GitHub user. Use this when a request is about the user's own profile for GitHub. Or when information is missing to build other tool calls.
-        
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            result = await self.mcp_server.call_tool("get_me", {})
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_me: {e}")
-            return None
 
-    async def get_team_members(self, org: str, team_slug: str) -> Any:
-        """
-        Get member usernames of a specific team in an organization. Limited to organizations accessible with current credentials
-        
-        Args:
-            org: Organization name
-            team_slug: Team slug
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"org": org, "team_slug": team_slug}
-            result = await self.mcp_server.call_tool("get_team_members", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_team_members: {e}")
-            return None
 
-    async def get_teams(self, org: str) -> Any:
-        """
-        Get details of the teams the user is a member of. Limited to organizations accessible with current credentials
-        
-        Args:
-            org: Organization name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"org": org}
-            result = await self.mcp_server.call_tool("get_teams", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_teams: {e}")
-            return None
 
-    # ==================== Other ====================
-
-    async def get_label(self, owner: str, repo: str, name: str) -> Any:
-        """
-        Get a specific label from a repository.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            name: Label name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "name": name}
-            result = await self.mcp_server.call_tool("get_label", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_label: {e}")
-            return None

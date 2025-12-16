@@ -1043,10 +1043,29 @@ class GitHubTools:
             return None
 
     # ==================== Search (General) ====================
+    
+    # ⚠️ MCPMARK LIMITATION WARNING ⚠️
+    # search_code relies on GitHub's code search index which does NOT work on:
+    # - Newly created repositories (not indexed yet)
+    # - Private repositories (slower/limited indexing)
+    # - Forked repositories (may not be indexed)
+    # 
+    # In MCPMark testing, all repos are newly created and private, so search_code
+    # will ALWAYS return empty results. Use alternative approaches:
+    # - For finding commits: use list_commits + get_commit
+    # - For finding files: use get_file_contents with known paths
+    # - For PR analysis: use pr_investigator which uses list_commits(sha=head_ref)
 
     async def search_code(self, query: str, page: int = 1, per_page: int = 30) -> Any:
         """
-        Fast and precise code search across ALL GitHub repositories using GitHub's native search engine. Best for finding exact symbols, functions, classes, or specific code patterns.
+        ⚠️ WARNING: This tool does NOT work on newly created/private repositories!
+        
+        In MCPMark testing, all repos are newly created and private, so this tool
+        will return empty results. Use list_commits + get_commit instead.
+        
+        Fast and precise code search across indexed GitHub repositories using 
+        GitHub's native search engine. Best for finding exact symbols, functions, 
+        classes, or specific code patterns in PUBLIC, ESTABLISHED repositories.
         
         Args:
             query: Search query
@@ -1054,7 +1073,7 @@ class GitHubTools:
             per_page: Results per page
             
         Returns:
-            Tool execution result or None if failed
+            Tool execution result or None if failed (often empty for new/private repos)
         """
         try:
             args = {"query": query, "page": page, "perPage": per_page}

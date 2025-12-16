@@ -105,12 +105,26 @@ class RepoExplorer:
 
     def _parse_result(self, result: Any) -> Any:
         """Parse API result"""
-        if isinstance(result, (list, dict)):
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            # Handle MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+            content_list = result.get('content', [])
+            if isinstance(content_list, list) and content_list:
+                for item in content_list:
+                    if isinstance(item, dict) and item.get('type') == 'text':
+                        text = item.get('text', '')
+                        try:
+                            parsed = json.loads(text)
+                            return parsed
+                        except json.JSONDecodeError:
+                            pass
+            # Direct dict result
             return result
         if isinstance(result, str):
             try:
                 return json.loads(result)
-            except:
+            except json.JSONDecodeError:
                 return []
         return []
 

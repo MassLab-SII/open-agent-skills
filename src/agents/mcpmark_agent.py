@@ -875,9 +875,17 @@ class MCPMarkAgent(BaseMCPAgent):
                     #这里之后会加一个记录skill的历史记录，以便于后续的技能调用
                 
                 # Check for skill trigger in assistant's response
-                if assistant_text and not self._active_skill:
+                # if assistant_text and not self._active_skill:
+                #     triggered_skill = self._check_skill_trigger(assistant_text)
+                #     if triggered_skill:
+                #         self._active_skill = triggered_skill
+                #         logger.info(f"Skill triggered: {triggered_skill}")
+
+                # revised by yxy
+                triggered_skill = None
+                if assistant_text:
                     triggered_skill = self._check_skill_trigger(assistant_text)
-                    if triggered_skill:
+                    if triggered_skill and triggered_skill != self._active_skill:
                         self._active_skill = triggered_skill
                         logger.info(f"Skill triggered: {triggered_skill}")
                 
@@ -891,8 +899,10 @@ class MCPMarkAgent(BaseMCPAgent):
                 skill_context_added = False
                 
                 # If skill was just triggered, add full skill documentation
-                if self._active_skill and turn_count == 0:
-                    skill_context = self._load_skill_context(self._active_skill)
+                # if self._active_skill and turn_count == 0:
+                #     skill_context = self._load_skill_context(self._active_skill)
+                if triggered_skill:
+                    skill_context = self._load_skill_context(triggered_skill)
                     if skill_context:
                         messages.append(message_dict)
                         turn_count += 1

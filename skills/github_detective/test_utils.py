@@ -57,9 +57,10 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             # Verify we are using the HTTP server
             await self.verify_tool_call(
                 self.mock_http_instance,
-                gh.get_me,
-                "get_me",
-                {}
+                gh.list_branches,
+                "list_branches",
+                {"owner": "o", "repo": "r", "page": 1, "perPage": 30},
+                owner="o", repo="r"
             )
 
     async def test_init_local_without_token(self):
@@ -70,9 +71,10 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             # Verify we are using the Stdio server
             await self.verify_tool_call(
                 self.mock_stdio_instance,
-                gh.get_me,
-                "get_me",
-                {}
+                gh.list_branches,
+                "list_branches",
+                {"owner": "o", "repo": "r", "page": 1, "perPage": 30},
+                owner="o", repo="r"
             )
 
     # All subsequent tests assume a valid instance (we'll use Stdio for simplicity of argument checking)
@@ -84,27 +86,7 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
              self.gh = GitHubTools()
              return self.mock_stdio_instance
 
-    # ==================== Repository Management ====================
 
-    async def test_create_repository(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.create_repository,
-            "create_repository",
-            {"name": "test-repo", "private": True, "description": "desc"},
-            name="test-repo", private=True, description="desc"
-        )
-
-    async def test_fork_repository(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.fork_repository,
-            "fork_repository",
-            {"owner": "original", "repo": "repo", "organization": "my-org"},
-            owner="original", repo="repo", organization="my-org"
-        )
 
     # ==================== Branch & Commit Management ====================
 
@@ -161,15 +143,7 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             owner="o", repo="r", path="p", content="c", message="m", branch="b", sha="s"
         )
 
-    async def test_delete_file(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.delete_file,
-            "delete_file",
-            {"owner": "o", "repo": "r", "path": "p", "message": "m", "branch": "b", "sha": "s"},
-            owner="o", repo="r", path="p", message="m", branch="b", sha="s"
-        )
+
 
     async def test_get_file_contents(self):
         server = await self.setup_gh()
@@ -205,15 +179,7 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             owner="o", repo="r", issue_number=1, body="b"
         )
 
-    async def test_assign_copilot_to_issue(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.assign_copilot_to_issue,
-            "assign_copilot_to_issue",
-            {"owner": "o", "repo": "r", "issue_number": 1},
-            owner="o", repo="r", issue_number=1
-        )
+
 
     async def test_issue_read(self):
         server = await self.setup_gh()
@@ -289,15 +255,7 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
 
     # ==================== Pull Requests ====================
 
-    async def test_add_comment_to_pending_review(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.add_comment_to_pending_review,
-            "add_comment_to_pending_review",
-            {"pull_number": 1, "body": "b"},
-            pull_number=1, body="b"
-        )
+
 
     async def test_create_pull_request(self):
         server = await self.setup_gh()
@@ -351,15 +309,7 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             pull_number=1, event="APPROVE"
         )
 
-    async def test_request_copilot_review(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.request_copilot_review,
-            "request_copilot_review",
-            {"owner": "o", "repo": "r", "pullNumber": 1},
-            owner="o", repo="r", pull_number=1
-        )
+
 
     async def test_search_pull_requests(self):
         server = await self.setup_gh()
@@ -383,15 +333,7 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             owner="o", repo="r", pull_number=1, title="new", labels=["bug"], reviewers=["me"]
         )
 
-    async def test_update_pull_request_branch(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.update_pull_request_branch,
-            "update_pull_request_branch",
-            {"owner": "o", "repo": "r", "pullNumber": 1},
-            owner="o", repo="r", pull_number=1
-        )
+
             
     # ==================== Search (General) ====================
 
@@ -406,71 +348,11 @@ class TestGitHubTools(unittest.IsolatedAsyncioTestCase):
             query="query"
         )
 
-    async def test_search_users(self):
-        server = await self.setup_gh()
-        # utils.py uses "query"
-        await self.verify_tool_call(
-            server,
-            self.gh.search_users,
-            "search_users",
-            {"query": "query", "page": 1, "perPage": 30},
-            query="query"
-        )
-        
-    async def test_search_repositories(self):
-        server = await self.setup_gh()
-        # utils.py uses "query"
-        await self.verify_tool_call(
-            server,
-            self.gh.search_repositories,
-            "search_repositories",
-            {"query": "query", "page": 1, "perPage": 30},
-            query="query"
-        )
 
-    # ==================== Teams & Users ====================
 
-    # get_me is covered in setup tests but valid here too
-    async def test_get_me(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.get_me,
-            "get_me",
-            {}
-        )
-        
-    async def test_get_team_members(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.get_team_members,
-            "get_team_members",
-            {"org": "o", "team_slug": "s"},
-            org="o", team_slug="s"
-        )
 
-    async def test_get_teams(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.get_teams,
-            "get_teams",
-            {"org": "o"},
-            org="o"
-        )
 
-    # ==================== Other ====================
 
-    async def test_get_label(self):
-        server = await self.setup_gh()
-        await self.verify_tool_call(
-            server,
-            self.gh.get_label,
-            "get_label",
-            {"owner": "o", "repo": "r", "name": "l"},
-            owner="o", repo="r", name="l"
-        )
 
 if __name__ == "__main__":
     unittest.main()

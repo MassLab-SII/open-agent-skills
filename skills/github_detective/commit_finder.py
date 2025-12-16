@@ -101,14 +101,31 @@ class CommitFinder:
             return all_commits
 
     def _parse_result(self, result: Any) -> List[Dict[str, Any]]:
-        """Parse API result"""
+        """Parse API result, handling MCP response format"""
+        # Handle MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+        if isinstance(result, dict):
+            content_list = result.get("content", [])
+            if isinstance(content_list, list) and content_list:
+                for item in content_list:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text = item.get("text", "")
+                        try:
+                            parsed = json.loads(text)
+                            if isinstance(parsed, list):
+                                return parsed
+                        except json.JSONDecodeError:
+                            pass
+            # Direct list in dict (unlikely but handle)
+            return []
         if isinstance(result, list):
             return result
         if isinstance(result, str):
             try:
-                return json.loads(result)
-            except:
-                return []
+                parsed = json.loads(result)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
         return []
 
     def _matches_query(self, commit: Dict[str, Any], query: Optional[str]) -> bool:
