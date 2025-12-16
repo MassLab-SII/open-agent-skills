@@ -173,7 +173,7 @@ class MCPMarkAgent(BaseMCPAgent):
         results = []
         
         for cmd in commands:
-            logger.info(f"Executing extracted command: {cmd}")
+            logger.debug(f"Executing extracted command: {cmd}")
             success, stdout, stderr = MCPMarkAgent._skill_manager.parse_and_execute_command(
                 cmd, working_dir
             )
