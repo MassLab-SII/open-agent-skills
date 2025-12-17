@@ -137,6 +137,9 @@ Examples:
     python run_browser_ops.py -c "await browser.navigate('http://localhost:7770')"
     python run_browser_ops.py -c "await browser.snapshot()"
     
+    # IMPORTANT: Between different tasks, reset the browser state:
+    python browser_server.py --reset
+    
     # Run in standalone mode (browser closes after each call):
     python run_browser_ops.py -c "await browser.navigate('http://localhost:7770')" --standalone
     

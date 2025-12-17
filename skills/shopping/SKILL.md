@@ -18,7 +18,30 @@ In shopping website automation, we distinguish two types of operations:
 
 ## I. Skills
 
-### 1. Advanced Search - By Product Name and Price Range
+### 1. Simple Search - Type and Submit
+
+**File**: `simple_search.py`
+
+**Use Cases**:
+- Need to search for a product using the main search bar
+- Want to type a search term and automatically press Enter to submit
+
+**Prerequisites**:
+- First use `navigate()` to navigate to the website homepage
+- Get the ref value of the search input field
+
+
+**Usage**:
+```bash
+# Usage:
+#   python simple_search.py <search_term> <search_input_ref>
+# Example:
+python simple_search.py "gingerbread" e35
+```
+
+---
+
+### 2. Advanced Search - By Product Name and Price Range
 
 **File**: `advanced_search_by_name.py`
 
@@ -45,7 +68,7 @@ python advanced_search_by_name.py "Ginger" 50.00 100.00 e91 e110 e114 e118
 
 ---
 
-### 2. Advanced Search - By Description and Price Range
+### 3. Advanced Search - By Description and Price Range
 
 **File**: `advanced_search_by_description.py`
 
@@ -72,7 +95,7 @@ python advanced_search_by_description.py "vitamin" 0.00 99.99 e99 e110 e114 e118
 
 ---
 
-### 3. Checkout - Fill Shipping Information
+### 4. Checkout - Fill Shipping Information
 
 **File**: `fill_shipping_info.py`
 

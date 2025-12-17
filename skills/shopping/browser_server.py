@@ -14,6 +14,9 @@ Usage:
     # Start server (background)
     python browser_server.py &
     
+    # Reset browser (close all tabs, navigate to about:blank) - USE BETWEEN TASKS
+    python browser_server.py --reset
+    
     # Stop server
     python browser_server.py --stop
 """
@@ -74,6 +77,7 @@ class BrowserServer:
         
         print(f"   ✓ Server listening on {self.socket_path}")
         print("   Use run_browser_ops.py to send commands")
+        print("   Use --reset between tasks to clean up browser state")
         print("-" * 50)
         
         # Keep server running
@@ -90,11 +94,14 @@ class BrowserServer:
             
             request = json.loads(data.decode())
             command = request.get("command", "")
+            action = request.get("action", "")  # For special actions like reset
             
-            print(f"📥 Received: {command[:100]}...")
-            
-            # Execute command
-            result = await self.execute_command(command)
+            if action == "reset":
+                print("🔄 Resetting browser...")
+                result = await self.reset_browser()
+            else:
+                print(f"📥 Received: {command[:100]}...")
+                result = await self.execute_command(command)
             
             # Send response
             response = json.dumps({"success": True, "result": result})
@@ -108,6 +115,24 @@ class BrowserServer:
         finally:
             writer.close()
             await writer.wait_closed()
+    
+    async def reset_browser(self) -> str:
+        """
+        Reset browser state - close all tabs except one and navigate to about:blank.
+        Use this between tasks to get a clean state.
+        """
+        try:
+            # Close all extra tabs (get list, close all except first)
+            tabs_result = await self.browser.list_tabs()
+            
+            # Navigate current tab to about:blank to clear state
+            await self.browser.navigate("about:blank")
+            
+            print("   ✓ Browser reset complete!")
+            return "Browser reset - navigated to about:blank"
+        except Exception as e:
+            print(f"   ⚠️ Reset warning: {e}")
+            return f"Reset completed with warning: {e}"
     
     async def execute_command(self, code: str) -> str:
         """Execute browser command code."""
@@ -184,6 +209,35 @@ def stop_server():
             os.unlink(PID_FILE)
 
 
+async def reset_browser():
+    """Send reset command to running server."""
+    if not os.path.exists(SOCKET_PATH):
+        print("Browser server not running")
+        return
+    
+    try:
+        reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
+        
+        request = json.dumps({"action": "reset"})
+        writer.write(request.encode())
+        await writer.drain()
+        writer.write_eof()
+        
+        data = await reader.read()
+        response = json.loads(data.decode())
+        
+        writer.close()
+        await writer.wait_closed()
+        
+        if response.get("success"):
+            print(f"✓ {response.get('result', 'Reset complete')}")
+        else:
+            print(f"✗ Reset failed: {response.get('error')}")
+            
+    except Exception as e:
+        print(f"Error: {e}")
+
+
 def is_server_running() -> bool:
     """Check if server is running."""
     return os.path.exists(SOCKET_PATH)
@@ -215,5 +269,7 @@ if __name__ == "__main__":
             print("Browser server is running")
         else:
             print("Browser server is not running")
+    elif len(sys.argv) > 1 and sys.argv[1] == "--reset":
+        asyncio.run(reset_browser())
     else:
         asyncio.run(main())

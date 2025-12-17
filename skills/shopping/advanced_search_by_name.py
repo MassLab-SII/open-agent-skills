@@ -60,8 +60,12 @@ async def advanced_search_by_name(
         print("Submitting search...")
         result = await browser.click(ref=search_btn_ref, element="Search button")
         
+        # Take snapshot to see results
+        print("Getting search results...")
+        snapshot = await browser.snapshot()
+        
         print("✓ Advanced search completed successfully!")
-        return result
+        return snapshot
 
 
 def main():
