@@ -12,7 +12,7 @@ This skill is based on Playwright MCP tools, providing automation capabilities f
 In shopping website automation, we distinguish two types of operations:
 
 1. **Skill**: Meaningful combinations of multiple tool calls, encapsulated as independent Python scripts
-2. **Basic Tools**: Single function calls in `utils.py`, used for atomic operations, similar to MCP
+2. **Basic Tools**: Single function calls in `utils.py`, used for atomic operations.
 
 ---
 
