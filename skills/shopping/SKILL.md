@@ -106,9 +106,9 @@ Below are the basic tool functions provided in `utils.py` and their use cases. T
 ### How to Run
 
 ```bash
+# Standard format (browser persists across calls)
 python run_browser_ops.py -c "await browser.navigate('http://localhost:7770')"
 ```
-
 ### Navigation Tools
 
 #### `navigate(url: str)`
@@ -211,7 +211,6 @@ python run_browser_ops.py -c "await browser.select_option(ref='e128', element_de
 **Example**:
 ```bash
 # Press Enter after typing in search box
-python run_browser_ops.py -c "await browser.type_text(ref='e32', text='chocolate')"
 python run_browser_ops.py -c "await browser.press_key('Enter')"
 ```
 

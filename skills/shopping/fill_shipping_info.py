@@ -12,11 +12,14 @@ Usage:
 
 Example:
     python fill_shipping_info.py test.buyer@example.com Alice Johnson "456 Oak Avenue" "United States" California "San Francisco" 94102 415-555-0123 e33 e46 e51 e65 e75 e80 e85 e90 e95
+
+Note:
+    For persistent browser sessions, first start: python browser_server.py
 """
 
 import asyncio
 import argparse
-from utils import BrowserTools
+from browser_client import BrowserClient
 
 
 async def fill_shipping_info(
@@ -64,8 +67,9 @@ async def fill_shipping_info(
         
     Note:
         This assumes you are already on the checkout page after clicking "Proceed to Checkout".
+        Uses browser_server.py for persistent browser sessions.
     """
-    async with BrowserTools() as browser:
+    async with BrowserClient() as browser:
         print("Filling shipping information...")
         
         # Fill email

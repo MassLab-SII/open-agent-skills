@@ -237,8 +237,8 @@ class SkillManager:
         else:
             cwd = Path.cwd()
         
-        logger.info(f"Executing command: {command}")
-        logger.info(f"Working directory: {cwd}")
+        logger.debug(f"Executing command: {command}")
+        logger.debug(f"Working directory: {cwd}")
         
         try:
             # Check if it's a Python command
@@ -309,8 +309,8 @@ class SkillManager:
             import shlex
             shell_cmd = shlex.split(reconstructed_command)
         
-        logger.info(f"Executing: {reconstructed_command}")
-        logger.info(f"Working directory: {cwd}")
+        logger.debug(f"Executing: {reconstructed_command}")
+        logger.debug(f"Working directory: {cwd}")
         
         return self._run_subprocess(shell_cmd, cwd)
     
@@ -353,7 +353,7 @@ class SkillManager:
             stderr = result.stderr
             
             if success:
-                logger.info(f"Command succeeded (exit code: {result.returncode})")
+                logger.debug(f"Command succeeded (exit code: {result.returncode})")
             else:
                 logger.error(f"Command failed (exit code: {result.returncode})")
             

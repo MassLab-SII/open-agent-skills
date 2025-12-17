@@ -60,12 +60,18 @@ class MCPStdioServer:
         return result.model_dump()
 
 
+# Default persistent session directory (kept for backward compatibility)
+DEFAULT_USER_DATA_DIR = "/tmp/playwright_shopping_session"
+
+
 class BrowserTools:
     """
     High-level wrapper for MCP Playwright browser tools.
     
     This class provides convenient methods for common browser operations using the
     MCP Playwright server.
+    
+    For persistent browser sessions across multiple script calls, use browser_server.py.
     """
     
     def __init__(self, timeout: int = 120):

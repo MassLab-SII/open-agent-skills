@@ -12,11 +12,14 @@ Usage:
 
 Example:
     python advanced_search_by_name.py "Ginger" 50.00 100.00 e91 e110 e114 e118
+
+Note:
+    For persistent browser sessions, first start: python browser_server.py
 """
 
 import asyncio
 import argparse
-from utils import BrowserTools
+from browser_client import BrowserClient
 
 
 async def advanced_search_by_name(
@@ -42,8 +45,9 @@ async def advanced_search_by_name(
         
     Note:
         This assumes you are already on the Advanced Search page.
+        Uses browser_server.py for persistent browser sessions.
     """
-    async with BrowserTools() as browser:
+    async with BrowserClient() as browser:
         # Fill search form
         print(f"Searching for '{product_name}' with price range ${price_from} - ${price_to}...")
         await browser.fill_form(fields=[
