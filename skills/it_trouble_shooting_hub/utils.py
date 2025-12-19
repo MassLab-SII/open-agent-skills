@@ -1,332 +1,281 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Notion Tools for IT Trouble Shooting Hub
-=========================================
-
-This module provides a high-level wrapper around Notion API for IT management tasks.
-It includes database querying, page creation, and block manipulation capabilities.
+MCP Tools for Toronto Guide weekend adventure planner skills.
+Pure MCP implementation without using notion_client library.
 """
 
-from typing import Dict, List, Optional, Any
+import asyncio
+import json
+import os
+from contextlib import AsyncExitStack
+from typing import Optional, List, Dict, Any
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
-from notion_client import Client
 
-
-class NotionTools:
+class NotionMCPTools:
     """
-    High-level wrapper for Notion API operations specific to IT management.
+    Pure MCP tools for Notion operations via MCP protocol
+    All methods call MCP tools and return raw results
+    """
     
-    This class provides convenient methods for common Notion operations used in
-    IT Trouble Shooting Hub tasks.
-    """
-
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, timeout: int = 120):
         """
-        Initialize Notion tools.
+        Initialize MCP tools.
         
         Args:
             api_key: Notion API key
+            timeout: MCP operation timeout in seconds
         """
         self.api_key = api_key
-        self.client = Client(auth=api_key)
-
-    def search_page(self, query: str, object_type: Optional[str] = None) -> Optional[Dict]:
+        self.timeout = timeout
+        self._stack = None
+        self.session = None
+    
+    async def __aenter__(self):
+        """Initialize MCP connection"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Notion-Version": "2022-06-28"
+        }
+        
+        params = StdioServerParameters(
+            command="npx",
+            args=["-y", "@notionhq/notion-mcp-server"],
+            env={**os.environ, "OPENAPI_MCP_HEADERS": json.dumps(headers)},
+        )
+        
+        self._stack = AsyncExitStack()
+        read, write = await self._stack.enter_async_context(stdio_client(params))
+        self.session = await self._stack.enter_async_context(ClientSession(read, write))
+        await asyncio.wait_for(self.session.initialize(), timeout=self.timeout)
+        
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Close MCP connection"""
+        if self._stack:
+            await self._stack.aclose()
+        self._stack = None
+        self.session = None
+    
+    # ==================== Core MCP Tools ====================
+    
+    async def search(self, query: str) -> Optional[str]:
         """
-        Search for a page by name/query
+        Search pages and databases in Notion
         
         Args:
-            query: Search query (page name or content)
-            object_type: Optional type filter ("page", "data_source", etc)
+            query: Search query string
             
         Returns:
-            Dictionary with page information or None if not found
+            Raw MCP result as JSON string or None on error
         """
         try:
-            # Try searching for the specific type if specified
-            if object_type:
-                response = self.client.search(query=query, filter={"value": object_type, "property": "object"})
-            else:
-                # Search without type filter
-                response = self.client.search(query=query)
-            
-            if response.get("results"):
-                return response["results"][0]
-            return None
+            result = await self.session.call_tool("API-post-search", {
+                "query": query
+            })
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error searching for page: {e}")
+            print(f"❌ Search error: {e}")
             return None
-
-    def find_database_by_name(self, database_name: str) -> Optional[str]:
+    
+    async def query_database(self, database_id: str, filter_data: Optional[Dict] = None) -> Optional[str]:
         """
-        Find a database ID by searching for it by name
-        Searches for data_source type which includes databases in newer Notion API
+        Query a database
         
         Args:
-            database_name: Name of the database to find
+            database_id: Database ID
+            filter_data: Optional filter configuration
             
         Returns:
-            Database ID or None if not found
+            Raw MCP result as JSON string or None on error
         """
         try:
-            # Search for databases by name (they appear as data_source type)
-            search_result = self.client.search(query=database_name)
+            args = {"database_id": database_id}
+            if filter_data:
+                args["filter"] = filter_data
             
-            # Look for data_source or database type results
-            for result in search_result.get("results", []):
-                result_type = result.get("object")
-                title = result.get("title")
-                
-                # Handle title as list of rich text
-                if isinstance(title, list):
-                    title = "".join(rt.get("plain_text", "") for rt in title)
-                
-                # Match by exact name and type
-                if result_type in ("database", "data_source"):
-                    if title == database_name:
-                        return result.get("id")
-            
-            return None
+            result = await self.session.call_tool("API-post-database-query", args)
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error finding database: {e}")
+            print(f"❌ Query database error: {e}")
             return None
-
-    def find_database_in_page(self, page_id: str, database_name: str) -> Optional[str]:
+    
+    async def get_block_children(self, block_id: str) -> Optional[str]:
         """
-        Find a database ID by searching through child blocks of a page
-        or by searching for it by name
+        Retrieve children blocks of a specified block
         
         Args:
-            page_id: Parent page ID
-            database_name: Name of the database to find
+            block_id: Block/Page ID
             
         Returns:
-            Database ID or None if not found
+            Raw MCP result as JSON string or None on error
         """
         try:
-            # First, try to find it as a child database block
-            blocks = self.client.blocks.children.list(page_id)
-            for block in blocks.get("results", []):
-                if block.get("type") == "child_database":
-                    child_db = block.get("child_database", {})
-                    if child_db.get("title") == database_name:
-                        return block.get("id")
-            
-            # If not found as child block, search for database by name
-            return self.find_database_by_name(database_name)
-            
-            return None
+            result = await self.session.call_tool("API-get-block-children", {
+                "block_id": block_id
+            })
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error finding database in page: {e}")
+            print(f"❌ Get block children error: {e}")
             return None
-
-    def search_database(self, query: str) -> Optional[Dict]:
+    
+    async def patch_block_children(self, block_id: str, children: List[Dict], 
+                                   after: Optional[str] = None) -> Optional[str]:
         """
-        Search for a database by name/query
+        Add or update children blocks
         
         Args:
-            query: Search query (database name)
+            block_id: Parent block ID
+            children: List of children blocks to add
+            after: Optional ID of block after which to insert
             
         Returns:
-            Dictionary with database information or None if not found
+            Raw MCP result as JSON string or None on error
         """
         try:
-            # Search without filter - will return both pages and databases
-            response = self.client.search(query=query)
-            
-            # Filter for databases in the response
-            for result in response.get("results", []):
-                if result.get("object") == "database":
-                    return result
-            
-            return None
-        except Exception as e:
-            print(f"Error searching for database: {e}")
-            return None
-
-    def query_database(
-        self,
-        database_id: str,
-        filter_config: Optional[Dict] = None,
-        page_size: int = 100
-    ) -> List[Dict]:
-        """
-        Query a database with optional filters
-        
-        Args:
-            database_id: Database ID to query
-            filter_config: Optional filter configuration
-            page_size: Number of results per page
-            
-        Returns:
-            List of page objects matching the query
-        """
-        try:
-            query_params = {
-                "data_source_id": database_id,
-                "page_size": page_size
+            args = {
+                "block_id": block_id,
+                "children": children
             }
-            if filter_config:
-                query_params["filter"] = filter_config
             
-            # Use data_sources.query() for newer notion-client versions
-            response = self.client.data_sources.query(**query_params)
-            return response.get("results", [])
+            if after:
+                args["after"] = after
+            
+            result = await self.session.call_tool("API-patch-block-children", args)
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error querying database: {e}")
-            return []
-
-    def get_page_properties(self, page_id: str) -> Dict:
-        """
-        Get all properties of a page
-        
-        Args:
-            page_id: Page ID
-            
-        Returns:
-            Dictionary with page properties
-        """
-        try:
-            page = self.client.pages.retrieve(page_id)
-            return page.get("properties", {})
-        except Exception as e:
-            print(f"Error getting page properties: {e}")
-            return {}
-
-    def create_page_in_database(
-        self,
-        database_id: str,
-        title: str,
-        properties: Optional[Dict] = None
-    ) -> Optional[Dict]:
-        """
-        Create a new page in a database
-        
-        Note: This method handles both regular databases and data_source databases.
-        For data_source databases, we first retrieve the parent database_id.
-        
-        Args:
-            database_id: Database or data_source ID
-            title: Page title (used as fallback if not in properties)
-            properties: Additional properties to set (should include title property)
-            
-        Returns:
-            Created page object or None
-        """
-        try:
-            # First, check if this is a data_source and get the actual database_id
-            actual_db_id = database_id
-            try:
-                ds = self.client.data_sources.retrieve(data_source_id=database_id)
-                parent = ds.get("parent", {})
-                if parent.get("type") == "database_id":
-                    actual_db_id = parent.get("database_id")
-            except:
-                # Not a data_source, use as-is
-                pass
-            
-            # Prepare properties
-            page_properties = {}
-            if properties:
-                page_properties.update(properties)
-            
-            # If no title property was provided, create a default one
-            # (This handles cases where properties doesn't explicitly include title)
-            if not any(v.get("title") for v in page_properties.values() if isinstance(v, dict)):
-                page_properties["title"] = [{"text": {"content": title}}]
-            
-            # Use proper parent format for database creation
-            page = self.client.pages.create(
-                parent={"database_id": actual_db_id},
-                properties=page_properties
-            )
-            return page
-        except Exception as e:
-            print(f"Error creating page in database: {e}")
+            print(f"❌ Patch block children error: {e}")
             return None
-
-    def add_bullet_list(
-        self,
-        page_id: str,
-        items: List[str]
-    ) -> Dict:
+    
+    async def create_page(self, parent_id: str, title: str) -> Optional[str]:
         """
-        Add a bullet list to a page
+        Create a new page
         
         Args:
-            page_id: Page ID
-            items: List of text items for bullets
+            parent_id: Parent page/database ID
+            title: Page title
             
         Returns:
-            Response from the API
+            Raw MCP result as JSON string or None on error
         """
         try:
-            children = []
-            for item in items:
-                children.append({
-                    "type": "bulleted_list_item",
-                    "bulleted_list_item": {
-                        "rich_text": [
-                            {
-                                "type": "text",
-                                "text": {"content": item}
-                            }
-                        ]
+            result = await self.session.call_tool("API-post-page", {
+                "parent": {"page_id": parent_id},
+                "properties": {
+                    "title": {
+                        "title": [{"type": "text", "text": {"content": title}}]
                     }
-                })
-            
-            result = self.client.blocks.children.append(
-                block_id=page_id,
-                children=children
-            )
-            return result
+                }
+            })
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error adding bullet list: {e}")
-            return {}
-
-    def get_block_children(self, block_id: str) -> List[Dict]:
+            print(f"❌ Create page error: {e}")
+            return None
+    
+    # ==================== Helper Methods ====================
+    
+    def _extract_text(self, result) -> Optional[str]:
         """
-        Get children blocks of a specified block
+        Extract text content from MCP result
         
         Args:
-            block_id: Block ID
+            result: MCP result object
             
         Returns:
-            List of child blocks
+            Extracted text content or None
         """
         try:
-            response = self.client.blocks.children.list(block_id)
-            return response.get("results", [])
-        except Exception as e:
-            print(f"Error getting block children: {e}")
-            return []
-
-    def get_plain_text_from_rich_text(self, rich_text_array: List[Dict]) -> str:
-        """
-        Extract plain text from a rich_text array
-        
-        Args:
-            rich_text_array: Array of rich text objects
-            
-        Returns:
-            Concatenated plain text
-        """
-        return "".join([item.get("plain_text", "") for item in rich_text_array])
-
-    def _get_page_title(self, page: Dict) -> str:
-        """
-        Extract title from a page object
-        
-        Args:
-            page: Page object from Notion API
-            
-        Returns:
-            Page title as string
-        """
-        properties = page.get("properties", {})
-        for prop_name, prop_data in properties.items():
-            if prop_data.get("type") == "title":
-                title_content = prop_data.get("title", [])
-                if title_content:
-                    return self.get_plain_text_from_rich_text(title_content)
-        return ""
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result
+            content = result_dict.get("content", [])
+            if content and len(content) > 0:
+                return content[0].get("text", "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            pass
+        return None
+    
+    # ==================== Block Creation Helpers ====================
+    
+    def create_heading_1(self, text: str) -> Dict:
+        """Create heading_1 block"""
+        return {
+            "type": "heading_1",
+            "heading_1": {
+                "rich_text": [{"type": "text", "text": {"content": text}}]
+            }
+        }
+    
+    def create_heading_2(self, text: str) -> Dict:
+        """Create heading_2 block"""
+        return {
+            "type": "heading_2",
+            "heading_2": {
+                "rich_text": [{"type": "text", "text": {"content": text}}]
+            }
+        }
+    
+    def create_paragraph(self, text: str) -> Dict:
+        """Create paragraph block"""
+        return {
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{"type": "text", "text": {"content": text}}]
+            }
+        }
+    
+    def create_bulleted_list_item(self, text: str) -> Dict:
+        """Create bulleted list item block"""
+        return {
+            "type": "bulleted_list_item",
+            "bulleted_list_item": {
+                "rich_text": [{"type": "text", "text": {"content": text}}]
+            }
+        }
+    
+    def create_numbered_list_item(self, text: str) -> Dict:
+        """Create numbered list item block"""
+        return {
+            "type": "numbered_list_item",
+            "numbered_list_item": {
+                "rich_text": [{"type": "text", "text": {"content": text}}]
+            }
+        }
+    
+    def create_toggle(self, title: str, children: List[Dict] = None) -> Dict:
+        """Create toggle block with optional children"""
+        block = {
+            "type": "toggle",
+            "toggle": {
+                "rich_text": [{"type": "text", "text": {"content": title}}]
+            }
+        }
+        if children:
+            block["children"] = children
+        return block
+    
+    def create_to_do(self, text: str, checked: bool = False) -> Dict:
+        """Create to-do item block"""
+        return {
+            "type": "to_do",
+            "to_do": {
+                "rich_text": [{"type": "text", "text": {"content": text}}],
+                "checked": checked
+            }
+        }
+    
+    def create_divider(self) -> Dict:
+        """Create divider block"""
+        return {
+            "type": "divider",
+            "divider": {}
+        }
+    
+    def create_callout(self, text: str, emoji: str = "💡") -> Dict:
+        """Create callout block with emoji icon"""
+        return {
+            "type": "callout",
+            "callout": {
+                "rich_text": [{"type": "text", "text": {"content": text}}],
+                "icon": {"type": "emoji", "emoji": emoji}
+            }
+        }
