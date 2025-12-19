@@ -13,6 +13,7 @@ Commands:
     edit            Edit/Overwrite a file
     apply_fix       Apply a search and replace fix
     file_edit       Search and replace across multiple files
+    batch           Push multiple files in a single commit
 
 Examples:
     # Edit/Overwrite a configuration file
@@ -23,6 +24,9 @@ Examples:
 
     # Mass edit (search and replace across multiple files)
     python file_editor.py file_edit mcpmark-source build-your-own-x --query "http://old-api.com" --replacement "https://new-api.com" --message "Migrate to HTTPS"
+
+    # Batch push multiple files in a single commit
+    python file_editor.py batch mcpmark-source build-your-own-x --files '[{"path": ".github/workflows/lint.yml", "content": "..."}, {"path": "eslint.config.js", "content": "..."}]' --message "Add linting workflow and config"
 """
 
 import argparse
@@ -319,6 +323,66 @@ class FileEditor:
             print(f"Mass edit completed. Updated: {success_count}, Failed: {fail_count}")
             return fail_count == 0
 
+    async def batch_push(
+        self,
+        owner: str,
+        repo: str,
+        files: list,
+        message: str,
+        branch: str = "main",
+    ) -> bool:
+        """
+        Push multiple files to a repository in a single commit.
+        
+        This is useful when you need to create/update multiple files atomically,
+        ensuring all changes are in one commit (e.g., adding workflow + config files).
+        
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            files: List of file dicts with 'path' and 'content' keys
+            message: Commit message
+            branch: Target branch (default: main)
+            
+        Returns:
+            True if successful, False otherwise
+            
+        Example:
+            files = [
+                {"path": ".github/workflows/lint.yml", "content": "name: Lint..."},
+                {"path": "eslint.config.js", "content": "module.exports = {...}"}
+            ]
+            await editor.batch_push(owner, repo, files, "Add linting", "main")
+        """
+        async with self.github:
+            print(f"Pushing {len(files)} files to {owner}/{repo} on {branch} in a single commit...")
+            
+            # Validate files format
+            for i, f in enumerate(files):
+                if not isinstance(f, dict) or 'path' not in f or 'content' not in f:
+                    print(f"Error: File at index {i} must have 'path' and 'content' keys")
+                    return False
+            
+            result = await self.github.push_files(
+                owner=owner,
+                repo=repo,
+                branch=branch,
+                files=files,
+                message=message,
+            )
+            
+            # Check for success
+            success = self._check_api_success(result)
+            if success:
+                print(f"Successfully pushed {len(files)} files in a single commit")
+                for f in files:
+                    print(f"  - {f['path']}")
+                return True
+            else:
+                print(f"Failed to push files: {result}")
+                return False
+
+
 async def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(
@@ -366,6 +430,14 @@ Examples:
     mass_parser.add_argument("--message", required=True, help="Commit message")
     mass_parser.add_argument("--branch", default="main", help="Target branch")
 
+    # Command: batch
+    batch_parser = subparsers.add_parser("batch", help="Push multiple files in a single commit")
+    batch_parser.add_argument("owner", help="Repository owner")
+    batch_parser.add_argument("repo", help="Repository name")
+    batch_parser.add_argument("--files", required=True, help='JSON array of files: [{"path": "...", "content": "..."}]')
+    batch_parser.add_argument("--message", required=True, help="Commit message")
+    batch_parser.add_argument("--branch", default="main", help="Target branch")
+
     args = parser.parse_args()
     editor = FileEditor()
 
@@ -386,6 +458,22 @@ Examples:
         elif args.command == "file_edit":
             success = await editor.mass_edit(
                 args.owner, args.repo, args.query, args.replacement, args.message, args.branch
+            )
+            if not success: sys.exit(1)
+            
+        elif args.command == "batch":
+            import json
+            try:
+                files = json.loads(args.files)
+                if not isinstance(files, list):
+                    print("Error: --files must be a JSON array")
+                    sys.exit(1)
+            except json.JSONDecodeError as e:
+                print(f"Error: Invalid JSON in --files: {e}")
+                sys.exit(1)
+            
+            success = await editor.batch_push(
+                args.owner, args.repo, files, args.message, args.branch
             )
             if not success: sys.exit(1)
             

@@ -44,6 +44,7 @@ class ContentTracker:
         self, 
         content: str, 
         file_path: Optional[str] = None,
+        branch: Optional[str] = None,
         max_commits: int = 50
     ) -> Optional[Dict[str, Any]]:
         """
@@ -52,6 +53,7 @@ class ContentTracker:
         Args:
             content: Text content to search for
             file_path: Optional specific file to search in
+            branch: Branch name to search (default: repository default branch)
             max_commits: Maximum commits to scan
 
         Returns:
@@ -89,11 +91,13 @@ class ContentTracker:
             
             # Step 2 & 3: For each file, find the commit that added the content
             for fp in target_files:
-                print(f"\nStep 2: Getting commit history for {fp}")
+                branch_info = f" on branch '{branch}'" if branch else ""
+                print(f"\nStep 2: Getting commit history for {fp}{branch_info}")
                 
                 commits_result = await gh.list_commits(
                     owner=self.owner,
                     repo=self.repo,
+                    sha=branch,  # sha parameter specifies branch name
                     path=fp,
                     page=1,
                     per_page=min(max_commits, 100)
@@ -232,6 +236,9 @@ Examples:
   # Search in a specific file (recommended for faster results)
   python content_tracker.py owner repo --content "def main" --file "src/app.py"
   
+  # Search on a specific branch
+  python content_tracker.py owner repo --content "new feature" --file "README.md" --branch develop
+  
   # Increase search depth for older commits
   python content_tracker.py owner repo --content "old text" --file "README.md" --max-commits 10
         """
@@ -241,6 +248,7 @@ Examples:
     parser.add_argument('repo', help='Repository name')
     parser.add_argument('--content', required=True, help='Content text to find')
     parser.add_argument('--file', help='Specific file to search in')
+    parser.add_argument('--branch', help='Branch name to search (default: repository default branch)')
     parser.add_argument('--max-commits', type=int, default=50, 
                         help='Max commits to scan per file (default: 50)')
 
@@ -252,6 +260,7 @@ Examples:
         result = await tracker.find_introducing_commit(
             content=args.content,
             file_path=args.file,
+            branch=args.branch,
             max_commits=args.max_commits
         )
         tracker.print_result(result)

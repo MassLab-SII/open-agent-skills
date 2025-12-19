@@ -10,19 +10,25 @@ This skill automates the creation and deployment of GitHub Actions workflows and
 1. **Workflow Building**: Create CI/CD workflows (basic CI, linting, scheduled tasks)
 2. **Configuration Generation**: Generate ESLint configs, Issue templates, PR templates
 
-## 1. Workflow Building
+## 1. Workflow Building (Automated Full Pipeline)
 
-Create various GitHub Actions workflows including basic CI, linting, and scheduled tasks.
+**IMPORTANT**: These commands are **fully automated pipelines** that:
+1. Create a branch
+2. Push all required files (workflow + configs)
+3. Create a PR
+4. Merge the PR
 
-**Use when**: You need to set up automated testing, linting, or scheduled tasks for your repository.
+**Use when**: You want a quick, fully automated setup and don't need control over individual commits.
+
+**DO NOT USE when**: The task requires a specific number of commits or manual control over the process. In that case, use `github_content_editor` skill's `batch` command to push files manually.
 
 ### Example
 
 ```bash
-# Create basic CI workflow
+# Create basic CI workflow (automated: creates branch → pushes files → creates PR → merges)
 python workflow_builder.py ci-basic owner repo --trigger "push,pull_request" --branch main --node-version 18
 
-# Create linting workflow with ESLint
+# Create linting workflow with ESLint (automated full pipeline)
 python workflow_builder.py lint owner repo --trigger "push,pull_request" --branch main
 
 # Create scheduled workflow (e.g., nightly health check)

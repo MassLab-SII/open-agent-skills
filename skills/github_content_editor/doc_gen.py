@@ -196,7 +196,7 @@ class DocGenerator:
                 author_info = commit_info.get("author", {})
                 date = author_info.get("date", "Unknown Date")[:10] # YYYY-MM-DD
                 message_text = commit_info.get("message", "").split("\n")[0]
-                sha = commit.get("sha", "")[:7]
+                sha = commit.get("sha", "")  # Full SHA for accuracy
                 author_name = author_info.get("name", "Unknown")
                 
                 if date not in commits_by_date:

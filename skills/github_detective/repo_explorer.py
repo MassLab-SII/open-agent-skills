@@ -8,7 +8,7 @@ Explore repository structure: branches, tags, releases, and directory contents.
 Uses multiple APIs to give a comprehensive view of the repository.
 
 Usage:
-    python repo_explorer.py <owner> <repo> [--show branches,tags,releases,files]
+    python repo_explorer.py <owner> <repo> [--show branches,tags,releases,files] [--branch <name>]
 
 Examples:
     # Show all repository info
@@ -19,6 +19,9 @@ Examples:
     
     # Show directory structure
     python repo_explorer.py enigma mcpmark --show files --path "src"
+    
+    # Show files on a specific branch
+    python repo_explorer.py owner repo --show files --path "src" --branch develop
 """
 
 import asyncio
@@ -39,7 +42,8 @@ class RepoExplorer:
     async def explore(
         self, 
         show: List[str] = None,
-        path: str = ""
+        path: str = "",
+        branch: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Explore repository structure.
@@ -47,6 +51,7 @@ class RepoExplorer:
         Args:
             show: List of items to show: branches, tags, releases, files
             path: Directory path for file listing
+            branch: Branch name for file listing (default: repository default branch)
 
         Returns:
             Dict with requested information
@@ -91,11 +96,13 @@ class RepoExplorer:
             
             # Get directory contents
             if 'files' in show:
-                print(f"Fetching directory contents: {path or '/'}")
+                branch_info = f" on branch '{branch}'" if branch else ""
+                print(f"Fetching directory contents: {path or '/'}{branch_info}")
                 contents = await gh.get_file_contents(
                     owner=self.owner,
                     repo=self.repo,
-                    path=path
+                    path=path,
+                    ref=branch  # ref parameter specifies branch name
                 )
                 result['files'] = self._parse_result(contents)
                 if isinstance(result['files'], list):
@@ -204,6 +211,9 @@ Examples:
   
   # List directory contents
   python repo_explorer.py owner repo --show files --path "src"
+  
+  # List files on a specific branch
+  python repo_explorer.py owner repo --show files --path "src" --branch develop
         """
     )
     
@@ -213,6 +223,7 @@ Examples:
                         help='Comma-separated: branches,tags,releases,files')
     parser.add_argument('--path', default='',
                         help='Directory path for file listing')
+    parser.add_argument('--branch', help='Branch name for file listing (default: repository default branch)')
 
     args = parser.parse_args()
     
@@ -221,7 +232,7 @@ Examples:
     explorer = RepoExplorer(args.owner, args.repo)
     
     try:
-        results = await explorer.explore(show=show_items, path=args.path)
+        results = await explorer.explore(show=show_items, path=args.path, branch=args.branch)
         explorer.print_results(results)
     except Exception as e:
         print(f"\nError exploring repo: {e}")

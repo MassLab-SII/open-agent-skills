@@ -11,7 +11,7 @@ For searching code CONTENT (not commit messages), use content_tracker.py instead
 
 Usage:
     python commit_finder.py <owner> <repo> [--query <regex>] [--author <name>] 
-                            [--path <file>] [--since <date>] [--until <date>] [--limit N]
+                            [--path <file>] [--since <date>] [--until <date>] [--branch <name>] [--limit N]
 
 Examples:
     # Find commits with "fix" in the message
@@ -19,6 +19,9 @@ Examples:
     
     # Find commits by author affecting a specific file
     python commit_finder.py enigma mcpmark --author "Daniel" --path "src/main.py"
+    
+    # Search on a specific branch
+    python commit_finder.py owner repo --query "feature" --branch develop
     
     # Limit results
     python commit_finder.py owner repo --query "bug" --limit 10
@@ -47,6 +50,7 @@ class CommitFinder:
         path: Optional[str] = None,
         since: Optional[str] = None,
         until: Optional[str] = None,
+        branch: Optional[str] = None,
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """
@@ -58,6 +62,7 @@ class CommitFinder:
             path: Filter by file path
             since: ISO date to start from
             until: ISO date to end at
+            branch: Branch name to search (default: repository default branch)
             limit: Maximum results
 
         Returns:
@@ -69,12 +74,14 @@ class CommitFinder:
             per_page = 100
             max_pages = 5  # Safety limit
             
-            print(f"Searching commits in {self.owner}/{self.repo}...")
+            branch_info = f" on branch '{branch}'" if branch else ""
+            print(f"Searching commits in {self.owner}/{self.repo}{branch_info}...")
             
             while len(all_commits) < limit and page <= max_pages:
                 result = await gh.list_commits(
                     owner=self.owner,
                     repo=self.repo,
+                    sha=branch,  # sha parameter specifies branch name
                     author=author,
                     path=path,
                     since=since,
@@ -146,11 +153,11 @@ class CommitFinder:
             return
 
         print(f"\nFound {len(commits)} commits:\n")
-        print(f"{'SHA':<9} | {'Date':<20} | {'Author':<15} | {'Message'}")
-        print("-" * 80)
+        print(f"{'SHA':<42} | {'Date':<20} | {'Author':<15} | {'Message'}")
+        print("-" * 130)
         
         for c in commits:
-            sha = c.get('sha', '')[:7]
+            sha = c.get('sha', '')  # Full SHA for accuracy
             commit_info = c.get('commit', {})
             author_info = commit_info.get('author', {})
             
@@ -158,7 +165,7 @@ class CommitFinder:
             date = author_info.get('date', '')[:19].replace('T', ' ')
             msg = commit_info.get('message', '').split('\n')[0][:45]
             
-            print(f"{sha:<9} | {date:<20} | {author:<15} | {msg}")
+            print(f"{sha:<42} | {date:<20} | {author:<15} | {msg}")
 
 
 async def main():
@@ -172,6 +179,9 @@ Examples:
   
   # Search by author and path
   python commit_finder.py owner repo --author "Daniel" --path "src/main.py"
+  
+  # Search on a specific branch
+  python commit_finder.py owner repo --query "feature" --branch develop
   
   # Search by date range
   python commit_finder.py owner repo --since "2024-01-01" --until "2024-06-01"
@@ -190,6 +200,7 @@ NOTE: To search for code CONTENT (not commit messages), use content_tracker.py
     parser.add_argument('--path', help='Filter by file path')
     parser.add_argument('--since', help='Start date (ISO format)')
     parser.add_argument('--until', help='End date (ISO format)')
+    parser.add_argument('--branch', help='Branch name to search (default: repository default branch)')
     parser.add_argument('--limit', type=int, default=20, help='Max results')
 
     args = parser.parse_args()
@@ -203,6 +214,7 @@ NOTE: To search for code CONTENT (not commit messages), use content_tracker.py
             path=args.path,
             since=args.since,
             until=args.until,
+            branch=args.branch,
             limit=args.limit
         )
         finder.print_results(commits)

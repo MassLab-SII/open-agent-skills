@@ -7,7 +7,7 @@ description: This skill provides comprehensive branch management for GitHub repo
 
 This skill provides comprehensive branch management and GitFlow workflow support:
 
-1. **Branch Management**: Create branches with any name, list branches, delete branches
+1. **Branch Management**: Create branches with any name, list branches
 2. **GitFlow Workflow**: Initialize GitFlow, finish (merge) feature/release/hotfix branches
 3. **Release Management**: Prepare releases, bump versions, generate changelogs
 4. **Branch Analysis**: Aggregate commits across branches, analyze contributors

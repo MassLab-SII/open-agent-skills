@@ -335,7 +335,7 @@ class ReleaseManager:
         for commit in commits:
             commit_info = commit.get("commit", {})
             message = commit_info.get("message", "").split("\n")[0]
-            sha = commit.get("sha", "")[:7]
+            sha = commit.get("sha", "")  # Full SHA for accuracy
             author = commit_info.get("author", {}).get("name", "Unknown")
             
             entry = f"- {message} ({sha}) by {author}"

@@ -51,6 +51,9 @@ Find which commit first introduced specific content to a file.
 # Find commit that added specific text to a file
 python content_tracker.py owner repo --content "RAG for Document Search" --file "README.md"
 
+# Search on a specific branch
+python content_tracker.py owner repo --content "new feature" --file "README.md" --branch develop
+
 # Increase search depth for older commits
 python content_tracker.py owner repo --content "old text" --file "README.md" --max-commits 10
 ```
@@ -69,6 +72,9 @@ python commit_finder.py owner repo --query "fix"
 
 # Filter by author and file path
 python commit_finder.py owner repo --author "Daniel" --path "src/main.py"
+
+# Search on a specific branch
+python commit_finder.py owner repo --query "feature" --branch develop
 
 # Date range search
 python commit_finder.py owner repo --since "2024-01-01" --until "2024-06-01"
@@ -94,4 +100,7 @@ python repo_explorer.py owner repo --show branches,tags
 
 # List directory contents
 python repo_explorer.py owner repo --show files --path "src"
+
+# List files on a specific branch
+python repo_explorer.py owner repo --show files --path "src" --branch develop
 ```

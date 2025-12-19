@@ -469,10 +469,13 @@ class GitHubStateManager(BaseStateManager):
             logger.info(f"| Importing repository template from {template_dir} …")
             owner = self.eval_org if self.eval_org else self._get_authenticated_user()
 
-            if "mcpmark-cicd" in template_name:
-                repo_url = self._import_template_repo(template_dir, owner, False)
-            else:
-                repo_url = self._import_template_repo(template_dir, owner, True)
+            # if "mcpmark-cicd" in template_name:
+            #     repo_url = self._import_template_repo(template_dir, owner, False)
+            # else:
+            #     repo_url = self._import_template_repo(template_dir, owner, True)
+            # Always create private repositories to avoid sending notifications
+            # to users mentioned in template files (e.g., @username in issues/PRs)
+            repo_url = self._import_template_repo(template_dir, owner, True)
 
             # Record for cleanup later
             repo_name = repo_url.rstrip("/").split("/")[-1]

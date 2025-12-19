@@ -220,7 +220,8 @@ class WorkflowBuilder:
         self,
         cron: str,
         script: str,
-        workflow_name: str = "Nightly Health Check"
+        workflow_name: str = "Nightly Health Check",
+        branch: str = "main"
     ) -> bool:
         """
         Create a scheduled workflow.
@@ -229,6 +230,7 @@ class WorkflowBuilder:
             cron: Cron schedule expression
             script: Script command to run
             workflow_name: Workflow name
+            branch: Target branch
 
         Returns:
             True if successful
@@ -241,7 +243,7 @@ class WorkflowBuilder:
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
-                from_branch="main"
+                from_branch=branch
             )
             
             print(f"Step 2: Generating workflow content")
@@ -263,7 +265,7 @@ class WorkflowBuilder:
                 repo=self.repo,
                 title=f"Add {workflow_name.lower()}",
                 head=branch_name,
-                base="main",
+                base=branch,
                 body=f"## Summary\nAdds scheduled workflow: {workflow_name}"
             )
             
@@ -516,6 +518,7 @@ Examples:
     sched_parser.add_argument("--cron", required=True, help="Cron schedule")
     sched_parser.add_argument("--script", required=True, help="Script to run")
     sched_parser.add_argument("--name", default="Nightly Health Check", help="Workflow name")
+    sched_parser.add_argument("--branch", default="main", help="Target branch")
     
     args = parser.parse_args()
     
@@ -547,7 +550,8 @@ Examples:
             success = await builder.create_scheduled_workflow(
                 cron=args.cron,
                 script=args.script,
-                workflow_name=args.name
+                workflow_name=args.name,
+                branch=args.branch
             )
             sys.exit(0 if success else 1)
             

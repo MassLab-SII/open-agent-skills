@@ -339,7 +339,7 @@ class BranchAnalyzer:
         
         for commit in merge_commits:
             commit_info = commit.get("commit", {})
-            sha = commit.get("sha", "")[:7]
+            sha = commit.get("sha", "")  # Full SHA for accuracy
             message = commit_info.get("message", "").split("\n")[0][:60]
             date = commit_info.get("author", {}).get("date", "")[:10]
             
@@ -432,7 +432,7 @@ class BranchAnalyzer:
         for branch, commits in data.items():
             print(f"\n=== {branch} ===")
             for c in commits:
-                print(f"  {c['sha'][:7]} | {c['author']:<15} | {c['message'][:40]}")
+                print(f"  {c['sha']} | {c['author']:<15} | {c['message'][:40]}")
 
     def print_contributors(self, contributors: List[Dict[str, Any]]):
         """Pretty print contributors"""
