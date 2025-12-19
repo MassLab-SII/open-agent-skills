@@ -1,72 +1,109 @@
 #!/usr/bin/env python3
 """
-Goals Restructure Skill
+Goals Restructure Skill - 100% MCP Implementation
+=================================================
 
 Restructures the Current Goals section on the Company In A Box page by:
 1. Adding a new goal heading: "🔄 Digital Transformation Initiative"
 2. Converting all four goal headings to toggleable headings
 3. Moving descriptions inside the toggles as child blocks
 4. Preserving content and order
+
+Uses pure MCP tools for all Notion operations.
 """
 
+import asyncio
+import json
+import re
 import os
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
-from notion_client import Client
-import logging
-
-# Setup logging
-logging.basicConfig(level=logging.ERROR, format='%(message)s')
-logger = logging.getLogger(__name__)
+from utils import NotionMCPTools
 
 # Load environment
-load_dotenv(dotenv_path=".mcp_env")
+env_paths = [
+    Path(__file__).parent.parent.parent / ".mcp_env",
+    Path.cwd() / ".mcp_env",
+    Path(".") / ".mcp_env",
+]
+
+for env_file in env_paths:
+    if env_file.exists():
+        load_dotenv(dotenv_path=str(env_file), override=False)
+        break
+
 api_key = os.getenv("EVAL_NOTION_API_KEY")
 
 if not api_key:
     print("Error: EVAL_NOTION_API_KEY not set", file=sys.stderr)
     sys.exit(1)
 
-client = Client(auth=api_key)
+
+#!/usr/bin/env python3
+"""
+Goals Restructure Skill - 100% MCP Implementation
+=================================================
+
+Restructures the Current Goals section on the Company In A Box page by:
+1. Adding a new goal heading: "🔄 Digital Transformation Initiative"
+2. Converting all four goal headings to toggleable headings
+3. Moving descriptions inside the toggles as child blocks
+4. Preserving content and order
+
+Uses pure MCP tools for all Notion operations.
+"""
+
+import asyncio
+import json
+import re
+import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional
+from dotenv import load_dotenv
+from utils import NotionMCPTools
+
+# Load environment
+env_paths = [
+    Path(__file__).parent.parent.parent / ".mcp_env",
+    Path.cwd() / ".mcp_env",
+    Path(".") / ".mcp_env",
+]
+
+for env_file in env_paths:
+    if env_file.exists():
+        load_dotenv(dotenv_path=str(env_file), override=False)
+        break
+
+api_key = os.getenv("EVAL_NOTION_API_KEY")
+
+if not api_key:
+    print("Error: EVAL_NOTION_API_KEY not set", file=sys.stderr)
+    sys.exit(1)
 
 
-def find_page(title: str) -> str:
-    """Find a page by title"""
+def extract_page_id_from_json(result_text: str) -> str:
+    """Extract page/block ID from JSON response"""
+    if not result_text:
+        return None
     try:
-        response = client.search(query=title, filter={"property": "object", "value": "page"})
-        for result in response.get("results", []):
-            if result.get("object") == "page":
-                page_title = get_page_title(result)
-                if page_title and title.lower() in page_title.lower():
-                    return result["id"]
-    except Exception as e:
-        print(f"Error searching for page: {e}", file=sys.stderr)
-    return None
+        data = json.loads(result_text)
+        if "id" in data:
+            return data["id"]
+    except (json.JSONDecodeError, TypeError):
+        pass
+    
+    match = re.search(r'"id":"([^"]+)"', result_text)
+    return match.group(1) if match else None
 
 
-def get_page_title(page: dict) -> str:
-    """Extract page title from page object"""
-    if "properties" in page:
-        for prop_name, prop_value in page["properties"].items():
-            if prop_value.get("type") == "title":
-                title_parts = prop_value.get("title", [])
-                return "".join(t.get("plain_text", "") for t in title_parts)
-    return ""
-
-
-def get_block_children(block_id: str) -> list:
-    """Get direct children of a block"""
-    try:
-        response = client.blocks.children.list(block_id=block_id)
-        return response.get("results", [])
-    except Exception as e:
-        print(f"Error fetching children for block {block_id}: {e}", file=sys.stderr)
-        return []
-
-
-def get_block_text(block: dict) -> str:
+def get_block_text(block: Dict) -> str:
     """Extract plain text from a block"""
-    block_type = block.get("type")
+    if not isinstance(block, dict):
+        return ""
+    
+    block_type = block.get("type", "")
     type_obj = block.get(block_type, {})
     
     if isinstance(type_obj, dict):
@@ -75,13 +112,41 @@ def get_block_text(block: dict) -> str:
     return ""
 
 
-def find_current_goals_parent(page_id: str) -> str:
+def parse_blocks_response(response_text: str):
+    """Parse blocks from API response"""
+    if not response_text:
+        return []
+    
+    try:
+        data = json.loads(response_text)
+        results = data.get("results", [])
+        return results if isinstance(results, list) else []
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return []
+
+
+async def find_page_by_title(mcp: NotionMCPTools, title: str) -> str:
+    """Find a page by title using search"""
+    search_result = await mcp.search(title)
+    if not search_result:
+        return None
+    
+    try:
+        data = json.loads(search_result)
+        for result in data.get("results", []):
+            if result.get("object") == "page":
+                return result.get("id")
+    except (json.JSONDecodeError, KeyError, TypeError):
+        pass
+    
+    return None
+
+
+async def find_current_goals_parent(mcp: NotionMCPTools, page_id: str) -> str:
     """
     Find the parent block containing the Current Goals section.
-    In Company In A Box, this is usually inside column lists.
-    Returns the block ID of the parent containing the "Current Goals" heading.
+    Handles column structures in Company In A Box page.
     """
-    # BFS to find Current Goals
     queue = [page_id]
     visited = set()
     
@@ -91,65 +156,92 @@ def find_current_goals_parent(page_id: str) -> str:
             continue
         visited.add(parent_id)
         
-        children = get_block_children(parent_id)
-        for child in children:
-            if child.get("type") in ["heading_1", "heading_2", "heading_3"]:
-                text = get_block_text(child)
+        children_result = await mcp.get_block_children(parent_id)
+        blocks = parse_blocks_response(children_result)
+        
+        # First check if Current Goals is in direct children
+        for block in blocks:
+            if block.get("type") in ["heading_1", "heading_2", "heading_3"]:
+                text = get_block_text(block)
                 if "current goals" in text.lower():
-                    print(f"Found Current Goals in parent: {parent_id}")
+                    print(f"✓ Found Current Goals in parent: {parent_id}")
                     return parent_id
         
-        # Add children with has_children to queue
-        for child in children:
-            if child.get("has_children"):
-                queue.append(child["id"])
+        # Check all blocks for column_list and explore them
+        for block in blocks:
+            if block.get("type") == "column_list":
+                # Get columns
+                columns_result = await mcp.get_block_children(block["id"])
+                columns = parse_blocks_response(columns_result)
+                
+                # Check each column
+                for col in columns:
+                    if col.get("type") == "column":
+                        # Check if Current Goals is in this column
+                        col_result = await mcp.get_block_children(col["id"])
+                        col_blocks = parse_blocks_response(col_result)
+                        
+                        for cb in col_blocks:
+                            if cb.get("type") in ["heading_1", "heading_2", "heading_3"]:
+                                text = get_block_text(cb)
+                                if "current goals" in text.lower():
+                                    print(f"✓ Found Current Goals in column: {col['id']}")
+                                    return col["id"]
+        
+        # Add children with has_children to queue for further search
+        for block in blocks:
+            if block.get("has_children") and block.get("type") != "column_list":
+                queue.append(block["id"])
     
     return None
 
 
-def restructure_goals(parent_id: str) -> bool:
-    """Main function to restructure the Current Goals section"""
+async def restructure_goals(mcp: NotionMCPTools, parent_id: str) -> bool:
+    """
+    Main function to restructure the Current Goals section
+    Strategy:
+    1. Find all goal headings and their descriptions
+    2. Update each heading to be toggleable (is_toggleable: true)
+    3. Delete original description blocks
+    4. Add descriptions as children of toggleable headings
+    5. Add new goal if needed
+    """
     
+    print("\n" + "="*70)
     print("Starting Goals Restructure...")
+    print("="*70)
     
-    # Get children of parent
-    children = get_block_children(parent_id)
+    # Get all blocks in the parent (Current Goals column)
+    children_result = await mcp.get_block_children(parent_id)
+    goal_blocks = parse_blocks_response(children_result)
     
-    # Find Current Goals heading index
-    goals_heading_idx = None
-    for idx, child in enumerate(children):
-        if child.get("type") in ["heading_1", "heading_2", "heading_3"]:
-            text = get_block_text(child)
+    # Find Current Goals heading
+    current_goals_idx = None
+    for i, block in enumerate(goal_blocks):
+        if block.get("type") in ["heading_1", "heading_2", "heading_3"]:
+            text = get_block_text(block)
             if "current goals" in text.lower():
-                goals_heading_idx = idx
+                print(f"✓ Found Current Goals heading at index {i}")
+                current_goals_idx = i
                 break
     
-    if goals_heading_idx is None:
-        print("Could not find Current Goals heading")
+    if current_goals_idx is None:
+        print("❌ Could not find Current Goals heading")
         return False
     
-    # Get goal blocks (after Current Goals heading)
-    goal_blocks = children[goals_heading_idx + 1:]
-    
-    # Find all goal heading_3 blocks and their descriptions
-    # Also remove duplicates
+    # Collect all goal blocks (starting after the main heading)
     goals = []
     seen_goals = set()
-    i = 0
+    i = current_goals_idx + 1
+    
     while i < len(goal_blocks):
         block = goal_blocks[i]
         if block.get("type") == "heading_3":
             heading_id = block["id"]
             heading_text = get_block_text(block)
             
-            # Check for duplicates
+            # Skip duplicates
             if heading_text in seen_goals:
-                # Delete duplicate
-                print(f"Removing duplicate goal: {heading_text}")
-                try:
-                    client.blocks.delete(block_id=heading_id)
-                except Exception as e:
-                    print(f"Error deleting duplicate: {e}")
                 i += 1
                 continue
             
@@ -164,65 +256,63 @@ def restructure_goals(parent_id: str) -> bool:
             
             goals.append({
                 "heading_id": heading_id,
-                "heading_block": block,
                 "heading_text": heading_text,
                 "description_blocks": descriptions
             })
         else:
             i += 1
     
-    print(f"Found {len(goals)} unique goals to convert")
+    print(f"✓ Found {len(goals)} unique goals to process\n")
     
-    # Process each goal
+    # Process each goal: update to toggleable, delete descriptions, add as children
     for goal in goals:
         heading_id = goal["heading_id"]
-        heading_block = goal["heading_block"]
+        heading_text = goal["heading_text"]
         descriptions = goal["description_blocks"]
         
-        print(f"Converting: {goal['heading_text']}")
+        print(f"📝 Processing: {heading_text}")
         
-        # Convert heading to toggleable (if not already)
-        heading_type = heading_block.get("type")
-        heading_data = heading_block.get(heading_type, {})
-        is_toggleable = heading_data.get("is_toggleable", False)
+        # Step 1: Update heading to be toggleable
+        print(f"  → Converting to toggleable heading...")
+        update_result = await mcp.update_block(heading_id, {
+            "heading_3": {
+                "rich_text": [{"type": "text", "text": {"content": heading_text}}],
+                "is_toggleable": True
+            }
+        })
+        if not update_result:
+            print(f"  ❌ Error updating heading")
+            return False
+        print(f"  ✓ Converted to toggleable")
         
-        if not is_toggleable:
-            try:
-                client.blocks.update(
-                    block_id=heading_id,
-                    **{heading_type: {**heading_data, "is_toggleable": True}}
-                )
-            except Exception as e:
-                print(f"Error updating heading: {e}")
-                return False
-        else:
-            print(f"  Already toggleable")
-        
-        # Move descriptions as children
+        # Step 2: Delete original description blocks and collect their data
+        description_data = []
         for desc_block in descriptions:
             desc_id = desc_block["id"]
             desc_type = desc_block.get("type")
-            desc_data = desc_block.get(desc_type, {})
+            desc_content = desc_block.get(desc_type, {})
             
-            # Add as child
-            try:
-                client.blocks.children.append(
-                    block_id=heading_id,
-                    children=[{
-                        "type": desc_type,
-                        desc_type: desc_data
-                    }]
-                )
-            except Exception as e:
-                print(f"Error adding child block: {e}")
-                return False
+            # Delete the block
+            delete_result = await mcp.delete_block(desc_id)
+            if not delete_result:
+                print(f"  ⚠️ Warning: Could not delete description block")
             
-            # Delete from current location
-            try:
-                client.blocks.delete(block_id=desc_id)
-            except Exception as e:
-                print(f"Error deleting block: {e}")
+            # Store the data for re-adding as child
+            description_data.append({
+                "type": desc_type,
+                desc_type: desc_content
+            })
+        
+        # Step 3: Add descriptions as children of the toggleable heading
+        if description_data:
+            print(f"  → Moving {len(description_data)} description block(s) inside toggle...")
+            add_result = await mcp.patch_block_children(heading_id, description_data)
+            if not add_result:
+                print(f"  ❌ Error adding child blocks")
                 return False
+            print(f"  ✓ Moved {len(description_data)} blocks inside toggle")
+        else:
+            print(f"  ✓ No descriptions to move")
     
     # Check if new goal needs to be added
     new_goal_exists = False
@@ -232,72 +322,84 @@ def restructure_goals(parent_id: str) -> bool:
             break
     
     if not new_goal_exists:
-        # Add new goal
-        print("Adding new goal: 🔄 Digital Transformation Initiative")
+        print(f"\n➕ Adding new goal: 🔄 Digital Transformation Initiative")
         
-        # Create new goal heading
-        try:
-            response = client.blocks.children.append(
-                block_id=parent_id,
-                children=[{
-                    "type": "heading_3",
-                    "heading_3": {
-                        "rich_text": [{"type": "text", "text": {"content": "🔄 Digital Transformation Initiative"}}],
-                        "is_toggleable": True
-                    }
-                }]
-            )
-            
-            if response.get("results"):
-                new_goal_id = response["results"][0]["id"]
-                print(f"Created new goal heading: {new_goal_id}")
-                
-                # Add description as child
-                client.blocks.children.append(
-                    block_id=new_goal_id,
-                    children=[{
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": "Modernize our technology infrastructure and digitize key business processes to improve efficiency and customer experience."}}]
-                        }
-                    }]
-                )
-        except Exception as e:
-            print(f"Error adding new goal: {e}")
+        new_goal_text = "🔄 Digital Transformation Initiative"
+        new_goal_description = "Modernize our technology infrastructure and digitize key business processes to improve efficiency and customer experience."
+        
+        # Get the last block ID in parent to add after it
+        if goal_blocks:
+            last_block_id = goal_blocks[-1]["id"]
+        else:
+            last_block_id = None
+        
+        # Create new goal with description
+        new_blocks = [
+            {
+                "type": "heading_3",
+                "heading_3": {
+                    "rich_text": [{"type": "text", "text": {"content": new_goal_text}}],
+                    "is_toggleable": True
+                }
+            },
+            {
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": new_goal_description}}]
+                }
+            }
+        ]
+        
+        add_result = await mcp.patch_block_children(parent_id, new_blocks, after=last_block_id)
+        if not add_result:
+            print(f"❌ Error adding new goal heading")
             return False
-    else:
-        print("All 4 goals already exist and are toggleable")
+        
+        print(f"✓ Created new goal heading")
+        print(f"✓ Added description to new goal")
     
-    print("Goals restructure completed successfully!")
+    print("\n" + "="*70)
+    print("✅ Goals restructure completed successfully!")
+    print("="*70)
+    
     return True
 
 
-def main():
+async def main():
     """Main entry point"""
-    # Find the Company In A Box page
-    page_id = find_page("Company In A Box")
+    print("\n🚀 Goals Restructure Skill - 100% MCP Implementation")
     
-    if not page_id:
-        print("Error: Could not find 'Company In A Box' page", file=sys.stderr)
-        sys.exit(1)
-    
-    print(f"Found Company In A Box page: {page_id}")
-    
-    # Find parent containing Current Goals
-    parent_id = find_current_goals_parent(page_id)
-    
-    if not parent_id:
-        print("Error: Could not find Current Goals section", file=sys.stderr)
-        sys.exit(1)
-    
-    # Restructure the goals
-    if restructure_goals(parent_id):
-        print("Success!")
-        sys.exit(0)
-    else:
-        print("Error: Failed to restructure goals", file=sys.stderr)
-        sys.exit(1)
+    async with NotionMCPTools(api_key) as mcp:
+        # Find the Company In A Box page
+        print("\n📍 Step 1: Finding 'Company In A Box' page")
+        print("-"*70)
+        
+        page_id = await find_page_by_title(mcp, "Company In A Box")
+        
+        if not page_id:
+            print("❌ Error: Could not find 'Company In A Box' page", file=sys.stderr)
+            return False
+        
+        print(f"✓ Found Company In A Box page: {page_id}")
+        
+        # Find parent containing Current Goals
+        print("\n📍 Step 2: Finding 'Current Goals' section")
+        print("-"*70)
+        
+        parent_id = await find_current_goals_parent(mcp, page_id)
+        
+        if not parent_id:
+            print("❌ Error: Could not find Current Goals section", file=sys.stderr)
+            return False
+        
+        # Restructure the goals
+        print("\n📍 Step 3: Restructuring goals")
+        print("-"*70)
+        
+        success = await restructure_goals(mcp, parent_id)
+        return success
 
 
 if __name__ == "__main__":
-    main()
+    result = asyncio.run(main())
+    sys.exit(0 if result else 1)
