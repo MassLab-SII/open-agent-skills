@@ -1,82 +1,109 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Notion Tools Wrapper
-====================
+MCP Tools for Notion Operations (Computer Science Student Dashboard)
+=====================================================================
 
-This module provides a high-level wrapper around Notion API.
-It simplifies common Notion operations and makes them reusable across different skills.
-
+Pure MCP tool wrapper for Notion operations without using notion_client library.
+All operations are performed via MCP protocol tools.
 """
 
 import asyncio
 import json
 import os
-from typing import Dict, List, Optional, Any
+from contextlib import AsyncExitStack
+from typing import Optional, List, Dict, Any
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
-from notion_client import Client
 
-
-class NotionTools:
+class NotionMCPTools:
     """
-    High-level wrapper for Notion API operations.
+    Pure MCP tools for Notion operations via MCP protocol
+    All methods call MCP tools and return raw results
+    """
     
-    This class provides convenient methods for common Notion operations using the
-    official notion_client Python library.
-    """
-
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, timeout: int = 120):
         """
-        Initialize Notion tools.
+        Initialize MCP tools.
         
         Args:
             api_key: Notion API key
+            timeout: MCP operation timeout in seconds
         """
         self.api_key = api_key
-        self.client = Client(auth=api_key)
-
-    def search_page(self, query: str) -> Optional[Dict]:
+        self.timeout = timeout
+        self._stack = None
+        self.session = None
+    
+    async def __aenter__(self):
+        """Initialize MCP connection"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Notion-Version": "2022-06-28"
+        }
+        
+        params = StdioServerParameters(
+            command="npx",
+            args=["-y", "@notionhq/notion-mcp-server"],
+            env={**os.environ, "OPENAPI_MCP_HEADERS": json.dumps(headers)},
+        )
+        
+        self._stack = AsyncExitStack()
+        read, write = await self._stack.enter_async_context(stdio_client(params))
+        self.session = await self._stack.enter_async_context(ClientSession(read, write))
+        await asyncio.wait_for(self.session.initialize(), timeout=self.timeout)
+        
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Close MCP connection"""
+        if self._stack:
+            await self._stack.aclose()
+        self._stack = None
+        self.session = None
+    
+    # ==================== Core MCP Tools ====================
+    
+    async def search(self, query: str) -> Optional[str]:
         """
-        Search for a page by name/query
+        Search pages and databases in Notion
         
         Args:
-            query: Search query (page name or content)
+            query: Search query string
             
         Returns:
-            Dictionary with page information or None if not found
+            Raw MCP result as JSON string or None on error
         """
         try:
-            response = self.client.search(query=query, filter={"value": "page", "property": "object"})
-            if response.get("results"):
-                return response["results"][0]
-            return None
+            result = await self.session.call_tool("API-post-search", {
+                "query": query
+            })
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error searching for page: {e}")
+            print(f"❌ Search error: {e}")
             return None
-
-    def get_block_children(self, block_id: str) -> List[Dict]:
+    
+    async def get_block_children(self, block_id: str) -> Optional[str]:
         """
-        Get children blocks of a specified block
+        Retrieve children blocks of a specified block
         
         Args:
-            block_id: Block ID
+            block_id: Block/Page ID
             
         Returns:
-            List of child blocks
+            Raw MCP result as JSON string or None on error
         """
         try:
-            response = self.client.blocks.children.list(block_id)
-            return response.get("results", [])
+            result = await self.session.call_tool("API-get-block-children", {
+                "block_id": block_id
+            })
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error getting block children: {e}")
-            return []
-
-    def patch_block_children(
-        self,
-        block_id: str,
-        children: List[Dict],
-        after: Optional[str] = None
-    ) -> Dict:
+            print(f"❌ Get block children error: {e}")
+            return None
+    
+    async def patch_block_children(self, block_id: str, children: List[Dict], 
+                                   after: Optional[str] = None) -> Optional[str]:
         """
         Add or update children blocks
         
@@ -86,235 +113,179 @@ class NotionTools:
             after: Optional ID of block after which to insert
             
         Returns:
-            Response from the API
+            Raw MCP result as JSON string or None on error
         """
         try:
-            # Notion API requires children to have proper structure
-            # For column_list, children should be columns with proper structure
-            formatted_children = []
-            for child in children:
-                if child.get("type") == "column_list":
-                    # column_list needs children field with columns
-                    formatted_children.append({
-                        "type": "column_list",
-                        "column_list": {
-                            "children": []  # Start with empty list
-                        }
-                    })
-                else:
-                    formatted_children.append(child)
-            
             args = {
                 "block_id": block_id,
-                "children": formatted_children
+                "children": children
             }
+            
             if after:
                 args["after"] = after
             
-            result = self.client.blocks.children.append(**args)
-            
-            # Return the first created child or the response
-            if isinstance(result, dict):
-                if "results" in result and result["results"]:
-                    return result["results"][0]
-                return result
-            return {}
+            result = await self.session.call_tool("API-patch-block-children", args)
+            return self._extract_text(result)
         except Exception as e:
-            print(f"Error patching block children: {e}")
-            return {}
-
-    def find_page_by_title(self, title: str) -> Optional[Dict]:
+            print(f"❌ Patch block children error: {e}")
+            return None
+    
+    # ==================== Helper Methods ====================
+    
+    def _extract_text(self, result) -> Optional[str]:
         """
-        Find a page by its exact title
+        Extract text content from MCP result
         
         Args:
-            title: Page title to search for
+            result: MCP result object
             
         Returns:
-            Page dictionary or None if not found
+            Extracted text content or None
         """
-        page = self.search_page(title)
-        if page:
-            # Extract title from the page object
-            page_title = self._get_page_title(page)
-            if page_title == title:
-                return page
+        try:
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result
+            content = result_dict.get("content", [])
+            if content and len(content) > 0:
+                return content[0].get("text", "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            pass
         return None
-
-    def find_block_by_heading_text(
-        self,
-        parent_block_id: str,
-        heading_text: str
-    ) -> Optional[Dict]:
+    
+    # ==================== Block Creation Helpers ====================
+    
+    def create_column_block(self) -> Dict:
         """
-        Find a block by its heading text within a parent block
+        Create a column block structure for column_list
         
-        Args:
-            parent_block_id: Parent block ID
-            heading_text: Heading text to search for
-            
         Returns:
-            Block dictionary or None if not found
+            Column block dictionary
         """
-        children = self.get_block_children(parent_block_id)
-        for child in children:
-            block_type = child.get("type")
-            if block_type and "heading" in block_type:
-                # Extract text from heading
-                content = child.get(block_type, {}).get("rich_text", [])
-                text = "".join([item.get("text", {}).get("content", "") for item in content])
-                if heading_text in text or text == heading_text:
-                    return child
-        return None
-
-    def add_column_to_list(
-        self,
-        column_list_id: str,
-        after_column_id: Optional[str] = None
-    ) -> Dict:
-        """
-        Add a new column to a column_list block
-        
-        Args:
-            column_list_id: Column list block ID
-            after_column_id: Optional ID of column after which to insert
-            
-        Returns:
-            New column block
-        """
-        new_column = {
+        return {
             "type": "column",
-            "column": {"children": []}
-        }
-        
-        result = self.patch_block_children(
-            column_list_id,
-            [new_column],
-            after=after_column_id
-        )
-        return result
-
-    def add_text_to_block(
-        self,
-        block_id: str,
-        text: str,
-        bold: bool = False,
-        italic: bool = False
-    ) -> Dict:
-        """
-        Add text to a block
-        
-        Args:
-            block_id: Block ID
-            text: Text content
-            bold: Whether text should be bold
-            italic: Whether text should be italic
-            
-        Returns:
-            Response from API
-        """
-        paragraph = {
-            "type": "paragraph",
-            "paragraph": {
-                "rich_text": [
-                    {
-                        "type": "text",
-                        "text": {"content": text},
-                        "annotations": {
-                            "bold": bold,
-                            "italic": italic
-                        }
-                    }
-                ]
+            "column": {
+                "children": []
             }
         }
-        
-        result = self.patch_block_children(block_id, [paragraph])
-        return result
-
-    def add_code_block(
-        self,
-        block_id: str,
-        code: str,
-        language: str = "go",
-        caption: Optional[str] = None
-    ) -> Dict:
+    
+    def create_paragraph_block(self, text: str, bold: bool = False) -> Dict:
         """
-        Add a code block to a block
+        Create paragraph block structure
         
         Args:
-            block_id: Parent block ID
+            text: Text content
+            bold: Whether to make text bold
+            
+        Returns:
+            Paragraph block dictionary
+        """
+        return {
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{
+                    "type": "text",
+                    "text": {"content": text},
+                    "annotations": {"bold": bold} if bold else {}
+                }]
+            }
+        }
+    
+    def create_code_block(self, code: str, language: str = "python", 
+                         caption: Optional[str] = None) -> Dict:
+        """
+        Create code block structure
+        
+        Args:
             code: Code content
             language: Programming language
             caption: Optional caption for the code block
             
         Returns:
-            Response from API
+            Code block dictionary
         """
-        code_block = {
+        block = {
             "type": "code",
             "code": {
-                "rich_text": [
-                    {
-                        "type": "text",
-                        "text": {"content": code}
-                    }
-                ],
+                "rich_text": [{
+                    "type": "text",
+                    "text": {"content": code}
+                }],
                 "language": language
             }
         }
         
         if caption:
-            code_block["code"]["caption"] = [
-                {
-                    "type": "text",
-                    "text": {"content": caption}
-                }
-            ]
+            block["code"]["caption"] = [{
+                "type": "text",
+                "text": {"content": caption}
+            }]
         
-        result = self.patch_block_children(block_id, [code_block])
-        return result
-
-    def find_column_by_content(
-        self,
-        column_list_id: str,
-        search_text: str
-    ) -> Optional[Dict]:
+        return block
+    
+    # ==================== High-level Operations ====================
+    
+    async def add_blocks_to_page(self, page_id: str, blocks: List[Dict], 
+                                  after: Optional[str] = None) -> Optional[str]:
         """
-        Find a column by its content text
+        Add blocks to a page
+        
+        Args:
+            page_id: Page ID
+            blocks: List of block dictionaries to add
+            after: Optional block ID after which to insert
+            
+        Returns:
+            Raw MCP result as JSON string
+        """
+        return await self.patch_block_children(page_id, blocks, after)
+    
+    async def add_paragraph(self, block_id: str, text: str, 
+                           bold: bool = False, after: Optional[str] = None) -> Optional[str]:
+        """
+        Add paragraph block
+        
+        Args:
+            block_id: Parent block ID
+            text: Text content
+            bold: Whether text should be bold
+            after: Optional block ID after which to insert
+            
+        Returns:
+            Raw MCP result
+        """
+        block = self.create_paragraph_block(text, bold)
+        return await self.patch_block_children(block_id, [block], after)
+    
+    async def add_code_block(self, block_id: str, code: str, 
+                            language: str = "python", 
+                            caption: Optional[str] = None,
+                            after: Optional[str] = None) -> Optional[str]:
+        """
+        Add code block
+        
+        Args:
+            block_id: Parent block ID
+            code: Code content
+            language: Programming language
+            caption: Optional caption
+            after: Optional block ID after which to insert
+            
+        Returns:
+            Raw MCP result
+        """
+        block = self.create_code_block(code, language, caption)
+        return await self.patch_block_children(block_id, [block], after)
+    
+    async def add_column(self, column_list_id: str, 
+                        after: Optional[str] = None) -> Optional[str]:
+        """
+        Add a new column to a column_list block
         
         Args:
             column_list_id: Column list block ID
-            search_text: Text to search for in column
+            after: Optional column ID after which to insert
             
         Returns:
-            Column block or None if not found
+            Raw MCP result with new column info
         """
-        columns = self.get_block_children(column_list_id)
-        for col in columns:
-            if col.get("type") == "column":
-                col_children = self.get_block_children(col.get("id"))
-                for child in col_children:
-                    if child.get("type") == "paragraph":
-                        content = child.get("paragraph", {}).get("rich_text", [])
-                        text = "".join([item.get("text", {}).get("content", "") for item in content])
-                        if search_text in text:
-                            return col
-        return None
-
-    def _get_page_title(self, page: Dict) -> str:
-        """
-        Extract title from a page object
-        
-        Args:
-            page: Page object from Notion API
-            
-        Returns:
-            Page title as string
-        """
-        properties = page.get("properties", {})
-        title_prop = properties.get("title", {})
-        title_content = title_prop.get("title", [])
-        if title_content:
-            return "".join([item.get("text", {}).get("content", "") for item in title_content])
-        return ""
+        column = self.create_column_block()
+        return await self.patch_block_children(column_list_id, [column], after)
