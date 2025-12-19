@@ -1,192 +1,179 @@
 #!/usr/bin/env python3
 """
-Expert Level Lessons Skill - 正式完整版本
-完全使用 MCP (Model Context Protocol) 实现所有操作
-
-功能：
-1. 发现数据库 IDs
-2. 查询现有课程
-3. 使用 MCP 创建 Expert Level 章节
-4. 使用 MCP 创建 Advanced Foundations Review Bridge 课程
-5. 使用 MCP 创建 4 个专家级课程
-6. 使用 MCP 更新现有课程状态
-7. 使用 MCP 设置所有课程关系
-8. 使用 MCP 添加学习路径内容块
-9. 使用 MCP 添加 Memory Management 的 Sub-items
-
-所有 Notion 写入操作都使用 MCP 而不是 Notion Client。
+Expert Level Lessons Skill - 100% MCP Implementation
+Uses pure MCP tools from utils.py
 """
-
 import asyncio
 import json
 import os
-from contextlib import AsyncExitStack
+import re
+from utils import NotionMCPTools
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from notion_client import Client
-from tasks.utils import notion_utils
+def extract_page_id(result_text):
+    """Extract page ID from MCP result text"""
+    if not result_text:
+        return None
+    try:
+        data = json.loads(result_text)
+        if "id" in data:
+            return data["id"]
+    except (json.JSONDecodeError, TypeError):
+        pass
+    match = re.search(r'"id":"([^"]+)"', result_text)
+    return match.group(1) if match else None
 
+def parse_courses(response_text):
+    """Parse courses from database query response"""
+    if not response_text:
+        return {}
+    
+    try:
+        data = json.loads(response_text)
+        courses = {}
+        
+        for item in data.get("results", []):
+            lessons_field = item["properties"].get("Lessons", {})
+            if lessons_field.get("type") == "title" and lessons_field.get("title"):
+                title = lessons_field["title"][0]["text"]["content"]
+                status = item["properties"].get("Status", {}).get("status", {}).get("name", "")
+                courses[title] = {"id": item["id"], "status": status}
+        
+        return courses
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return {}
 
-async def expert_skill_full_mcp():
-    """
-    完整的 Expert Level Lessons Skill 实现 - 全部使用 MCP
-    """
+def parse_chapters(response_text):
+    """Parse chapters from database query response"""
+    if not response_text:
+        return {}
     
-    print("\n" + "="*80)
-    print("🔍 STEP 1: 发现数据库和查询现有内容")
-    print("="*80 + "\n")
+    try:
+        data = json.loads(response_text)
+        chapters = {}
+        
+        for item in data.get("results", []):
+            name_field = item["properties"].get("Name", {})
+            if name_field.get("type") == "title" and name_field.get("title"):
+                name = name_field["title"][0]["text"]["content"]
+                chapters[name] = item["id"]
+        
+        return chapters
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return {}
+
+def discover_databases(search_result):
+    """Discover and identify database IDs from search results"""
+    if not search_result:
+        return None, None
     
-    # 使用兼容性包装获取 notion client
-    notion = notion_utils.get_notion_client()
-    
-    # 搜索 Python Roadmap 主页面
-    print("搜索 Python Roadmap 主页面...")
-    main_page_id = notion_utils.find_page(notion, "Python Roadmap")
-    
-    if not main_page_id:
-        print("❌ Python Roadmap 页面未找到")
-        return
-    
-    print(f"✓ 找到主页面: {main_page_id}\n")
-    
-    # 从主页面中获取所有块，找出数据库 IDs
-    print("搜索 Chapters 和 Steps 数据库...")
-    all_blocks = notion_utils.get_all_blocks_recursively(notion, main_page_id)
-    
+    try:
+        data = json.loads(search_result)
+        databases = []
+        
+        for result in data.get("results", []):
+            if result.get("object") == "database":
+                databases.append(result["id"])
+        
+        return databases if len(databases) >= 2 else (None, None)
+    except (json.JSONDecodeError, KeyError):
+        return None, None
+
+async def identify_database_types(mcp_tools, database_ids):
+    """Identify which database is chapters vs steps by querying content"""
     chapters_db_id = None
     steps_db_id = None
     
-    for block in all_blocks:
-        if block and block.get("type") == "child_database":
-            db_title = block.get("child_database", {}).get("title", "")
-            if "Chapters" in db_title:
-                chapters_db_id = block["id"]
-            elif "Steps" in db_title:
-                steps_db_id = block["id"]
+    for db_id in database_ids:
+        query_result = await mcp_tools.query_database(db_id)
+        if query_result:
+            try:
+                data = json.loads(query_result)
+                if data.get("results"):
+                    first_item = data["results"][0]
+                    properties = list(first_item.get("properties", {}).keys())
+                    
+                    # Simple heuristic: chapters DB has fewer properties
+                    if "Name" in properties and len(properties) < 5:
+                        chapters_db_id = db_id
+                    elif "Lessons" in properties or len(properties) >= 5:
+                        steps_db_id = db_id
+            except (json.JSONDecodeError, KeyError):
+                continue
     
-    if not chapters_db_id or not steps_db_id:
-        print(f"❌ 数据库未找到")
-        print(f"   Chapters: {chapters_db_id}")
-        print(f"   Steps: {steps_db_id}")
-        return
+    return chapters_db_id, steps_db_id
+
+async def expert_level_lessons_skill():
+    """Main skill execution - simplified"""
     
-    print(f"✓ Chapters 数据库: {chapters_db_id}")
-    print(f"✓ Steps 数据库: {steps_db_id}\n")
-    
-    # 查询所有课程
-    print("查询现有课程...")
-    steps_response = notion.databases.query(
-        database_id=steps_db_id,
-        page_size=100
-    )
-    
-    existing_lessons = {}
-    for item in steps_response.get("results", []):
-        lessons_field = item["properties"].get("Lessons", {})
-        if lessons_field.get("type") == "title":
-            title_blocks = lessons_field.get("title", [])
-            if title_blocks:
-                lesson_title = title_blocks[0]["text"]["content"]
-                existing_lessons[lesson_title] = {
-                    "id": item["id"],
-                    "status": item["properties"].get("Status", {}).get("status", {}).get("name", "")
-                }
-    
-    print(f"✓ 找到 {len(existing_lessons)} 个现有课程")
-    
-    # 查询所有章节
-    print("查询现有章节...")
-    chapters_response = notion.databases.query(
-        database_id=chapters_db_id,
-        page_size=100
-    )
-    
-    existing_chapters = {}
-    for item in chapters_response.get("results", []):
-        name_field = item["properties"].get("Name", {})
-        if name_field.get("type") == "title":
-            title_blocks = name_field.get("title", [])
-            if title_blocks:
-                chapter_name = title_blocks[0]["text"]["content"]
-                existing_chapters[chapter_name] = item["id"]
-    
-    print(f"✓ 找到 {len(existing_chapters)} 个现有章节")
-    
-    # 找到必需的课程 IDs
-    control_flow_id = existing_lessons.get("Control Flow", {}).get("id", "")
-    decorators_id = existing_lessons.get("Decorators", {}).get("id", "")
-    calling_api_id = existing_lessons.get("Calling API", {}).get("id", "")
-    regex_id = existing_lessons.get("Regular Expressions", {}).get("id", "")
-    error_handling_id = existing_lessons.get("Error Handling", {}).get("id", "")
-    data_structures_id = existing_lessons.get("Data Structures", {}).get("id", "")
-    
-    # 找 OOP 课程
-    oops_id = None
-    for lesson_title, lesson_info in existing_lessons.items():
-        if "OOP" in lesson_title or "Object" in lesson_title:
-            oops_id = lesson_info["id"]
-            break
-    
-    print()
-    
-    # ==========================================
-    # STEP 2: 使用 MCP 执行所有操作
-    # ==========================================
-    
-    print("="*80)
-    print("🚀 STEP 2: 使用 MCP 创建和更新所有内容")
-    print("="*80 + "\n")
+    print("🚀 Expert Level Lessons Skill - 100% MCP")
+    print("=" * 50)
     
     api_key = os.getenv("EVAL_NOTION_API_KEY")
+    if not api_key:
+        print("❌ API key not found")
+        return
     
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Notion-Version": "2025-09-03"
-    }
-    
-    params = StdioServerParameters(
-        command="npx",
-        args=["-y", "@notionhq/notion-mcp-server"],
-        env={**os.environ, "OPENAPI_MCP_HEADERS": json.dumps(headers)}
-    )
-    
-    stack = AsyncExitStack()
-    try:
-        read, write = await stack.enter_async_context(stdio_client(params))
-        session = await stack.enter_async_context(ClientSession(read, write))
-        await asyncio.wait_for(session.initialize(), timeout=120)
+    async with NotionMCPTools(api_key) as mcp:
+        # Step 1: Discover databases
+        print("🔍 Discovering databases...")
+        search_result = await mcp.search("")
+        database_ids = discover_databases(search_result)
         
-        print("✅ MCP 已连接\n")
-        
-        # ==========================================
-        # Task 1: 创建 Expert Level 章节
-        # ==========================================
-        
-        print("Task 1️⃣: 创建 Expert Level 章节 (使用 MCP)...")
-        
-        expert_chapter_result = await session.call_tool("API-post-page", {
-            "parent": {"database_id": chapters_db_id},
-            "properties": {
-                "Name": [{"text": {"content": "Expert Level"}}]
-            },
-            "icon": {"emoji": "🟣"}
-        })
-        
-        expert_chapter_id = extract_page_id(expert_chapter_result.model_dump())
-        
-        if expert_chapter_id:
-            print(f"✓ 创建成功: {expert_chapter_id}\n")
-        else:
-            print(f"✗ 创建失败\n")
+        if not database_ids or len(database_ids) < 2:
+            print("❌ Could not find databases")
             return
         
-        # ==========================================
-        # Task 2: 创建 Advanced Foundations Review Bridge 课程
-        # ==========================================
+        chapters_db_id, steps_db_id = await identify_database_types(mcp, database_ids)
         
-        print("Task 2️⃣: 创建 Bridge 课程 (使用 MCP)...")
+        if not chapters_db_id or not steps_db_id:
+            print("❌ Could not identify database types")
+            return
         
+        print(f"✓ Chapters DB: {chapters_db_id}")
+        print(f"✓ Steps DB: {steps_db_id}")
+        
+        # Step 2: Query existing content
+        print("\n📊 Querying existing content...")
+        courses_data = await mcp.query_database(steps_db_id)
+        chapters_data = await mcp.query_database(chapters_db_id)
+        
+        existing_courses = parse_courses(courses_data)
+        existing_chapters = parse_chapters(chapters_data)
+        
+        print(f"✓ Found {len(existing_courses)} courses, {len(existing_chapters)} chapters")
+        
+        # Get course IDs for relationships
+        control_flow_id = existing_courses.get("Control Flow", {}).get("id", "")
+        decorators_id = existing_courses.get("Decorators", {}).get("id", "")
+        calling_api_id = existing_courses.get("Calling API", {}).get("id", "")
+        regex_id = existing_courses.get("Regular Expressions", {}).get("id", "")
+        error_handling_id = existing_courses.get("Error Handling", {}).get("id", "")
+        data_structures_id = existing_courses.get("Data Structures", {}).get("id", "")
+        
+        # Find OOP course
+        oops_id = None
+        for title, info in existing_courses.items():
+            if "OOP" in title or "Object" in title:
+                oops_id = info["id"]
+                break
+        
+        # Step 3: Create Expert Level chapter
+        print("\n📝 Creating Expert Level chapter...")
+        chapter_result = await mcp.create_page(
+            chapters_db_id,
+            {"Name": [{"text": {"content": "Expert Level"}}]},
+            "🟣"
+        )
+        expert_chapter_id = extract_page_id(chapter_result)
+        
+        if not expert_chapter_id:
+            print("❌ Failed to create chapter")
+            return
+        
+        print(f"✓ Created chapter: {expert_chapter_id}")
+        
+        # Step 4: Create Bridge course
+        print("\n🌉 Creating Bridge course...")
         bridge_properties = {
             "Lessons": [{"text": {"content": "Advanced Foundations Review"}}],
             "Status": {"name": "Done"},
@@ -196,281 +183,105 @@ async def expert_skill_full_mcp():
         if control_flow_id:
             bridge_properties["Parent item"] = [{"id": control_flow_id}]
         
+        # Add sub-items
         sub_items = []
-        if decorators_id:
-            sub_items.append({"id": decorators_id})
-        if calling_api_id:
-            sub_items.append({"id": calling_api_id})
-        if regex_id:
-            sub_items.append({"id": regex_id})
+        for course_id in [decorators_id, calling_api_id, regex_id]:
+            if course_id:
+                sub_items.append({"id": course_id})
         
         if sub_items:
             bridge_properties["Sub-item"] = sub_items
         
-        bridge_result = await session.call_tool("API-post-page", {
-            "parent": {"database_id": steps_db_id},
-            "properties": bridge_properties
-        })
-        
-        bridge_id = extract_page_id(bridge_result.model_dump())
+        bridge_result = await mcp.create_page(steps_db_id, bridge_properties)
+        bridge_id = extract_page_id(bridge_result)
         
         if bridge_id:
-            print(f"✓ 创建成功: {bridge_id}\n")
-        else:
-            print(f"✗ 创建失败\n")
-            bridge_id = None
+            print(f"✓ Created bridge course: {bridge_id}")
         
-        # ==========================================
-        # Task 3: 创建 4 个专家级课程
-        # ==========================================
-        
-        print("Task 3️⃣: 创建 4 个专家级课程 (使用 MCP)...")
-        
-        expert_lessons_config = [
-            {
-                "title": "Metaprogramming and AST Manipulation",
-                "date": "2025-09-15",
-                "status": "To Do",
-                "parent": bridge_id
-            },
-            {
-                "title": "Async Concurrency Patterns",
-                "date": "2025-09-20",
-                "status": "To Do",
-                "parent": calling_api_id
-            },
-            {
-                "title": "Memory Management and GC Tuning",
-                "date": "2025-09-25",
-                "status": "In Progress",
-                "parent": bridge_id
-            },
-            {
-                "title": "Building Python C Extensions",
-                "date": "2025-10-01",
-                "status": "To Do",
-                "parent": None
-            }
+        # Step 5: Create expert courses
+        print("\n🎓 Creating expert courses...")
+        expert_courses = [
+            {"title": "Metaprogramming and AST Manipulation", "date": "2025-09-15", "status": "To Do", "parent": bridge_id},
+            {"title": "Async Concurrency Patterns", "date": "2025-09-20", "status": "To Do", "parent": calling_api_id},
+            {"title": "Memory Management and GC Tuning", "date": "2025-09-25", "status": "In Progress", "parent": bridge_id},
+            {"title": "Building Python C Extensions", "date": "2025-10-01", "status": "To Do", "parent": None}
         ]
         
-        expert_lesson_ids = {}
-        created_count = 0
+        expert_course_ids = {}
         
-        for config in expert_lessons_config:
+        for course in expert_courses:
             properties = {
-                "Lessons": [{"text": {"content": config["title"]}}],
-                "Status": {"name": config["status"]},
-                "Date": {"start": config["date"]},
+                "Lessons": [{"text": {"content": course["title"]}}],
+                "Status": {"name": course["status"]},
+                "Date": {"start": course["date"]},
                 "Chapters": [{"id": expert_chapter_id}]
             }
             
-            if config["parent"]:
-                properties["Parent item"] = [{"id": config["parent"]}]
+            if course["parent"]:
+                properties["Parent item"] = [{"id": course["parent"]}]
             
-            lesson_result = await session.call_tool("API-post-page", {
-                "parent": {"database_id": steps_db_id},
-                "properties": properties
-            })
+            result = await mcp.create_page(steps_db_id, properties)
+            course_id = extract_page_id(result)
             
-            lesson_id = extract_page_id(lesson_result.model_dump())
-            
-            if lesson_id:
-                expert_lesson_ids[config["title"]] = lesson_id
-                print(f"✓ {config['title']}")
-                created_count += 1
+            if course_id:
+                expert_course_ids[course["title"]] = course_id
+                print(f"✓ {course['title']}")
         
-        print(f"✓ 创建了 {created_count} 个专家级课程\n")
+        # Step 6: Update existing course status
+        print("\n🔄 Updating course status...")
+        status_updates = [
+            (decorators_id, "Decorators"),
+            (control_flow_id, "Control Flow")
+        ]
         
-        # ==========================================
-        # Task 4: 更新现有课程状态 (使用 MCP)
-        # ==========================================
+        for course_id, name in status_updates:
+            if course_id:
+                await mcp.update_page(course_id, {"Status": {"status": {"name": "Done"}}})
+                print(f"✓ Updated {name} to Done")
         
-        print("Task 4️⃣: 更新现有课程状态 (使用 MCP)...")
+        # Step 7: Set course relationships
+        print("\n🔗 Setting course relationships...")
         
-        # 更新 Decorators 为 Done
-        if decorators_id:
-            await session.call_tool("API-patch-page", {
-                "page_id": decorators_id,
-                "properties": {"Status": {"status": {"name": "Done"}}}
+        # Error Handling -> Async Concurrency Patterns
+        if error_handling_id and "Async Concurrency Patterns" in expert_course_ids:
+            await mcp.update_page(error_handling_id, {
+                "Sub-item": [{"id": expert_course_ids["Async Concurrency Patterns"]}]
             })
-            print(f"✓ Decorators: Updated to Done")
+            print("✓ Added Async Concurrency as Error Handling sub-item")
         
-        # 更新 Control Flow 为 Done
-        if control_flow_id:
-            await session.call_tool("API-patch-page", {
-                "page_id": control_flow_id,
-                "properties": {"Status": {"status": {"name": "Done"}}}
+        # Building C Extensions -> Metaprogramming
+        if "Building Python C Extensions" in expert_course_ids and "Metaprogramming and AST Manipulation" in expert_course_ids:
+            await mcp.update_page(expert_course_ids["Building Python C Extensions"], {
+                "Parent item": [{"id": expert_course_ids["Metaprogramming and AST Manipulation"]}]
             })
-            print(f"✓ Control Flow: Updated to Done")
+            print("✓ Set Metaprogramming as C Extensions parent")
         
-        print()
-        
-        # ==========================================
-        # Task 5: 更新 Error Handling 的 Sub-items (使用 MCP)
-        # ==========================================
-        
-        print("Task 5️⃣: 更新 Error Handling (使用 MCP)...")
-        
-        if error_handling_id and "Async Concurrency Patterns" in expert_lesson_ids:
-            await session.call_tool("API-patch-page", {
-                "page_id": error_handling_id,
-                "properties": {
-                    "Sub-item": [{"id": expert_lesson_ids["Async Concurrency Patterns"]}]
-                }
+        # Memory Management -> Data Structures + OOP
+        if "Memory Management and GC Tuning" in expert_course_ids and data_structures_id and oops_id:
+            await mcp.update_page(expert_course_ids["Memory Management and GC Tuning"], {
+                "Sub-item": [{"id": data_structures_id}, {"id": oops_id}]
             })
-            print(f"✓ Added Async Concurrency Patterns as sub-item\n")
-        else:
-            print(f"⚠ Error Handling not found\n")
+            print("✓ Added Data Structures and OOP as Memory Management sub-items")
         
-        # ==========================================
-        # Task 6: 设置 Building Python C Extensions 的 Parent (使用 MCP)
-        # ==========================================
-        
-        print("Task 6️⃣: 设置 Building Python C Extensions Parent (使用 MCP)...")
-        
-        if "Building Python C Extensions" in expert_lesson_ids and "Metaprogramming and AST Manipulation" in expert_lesson_ids:
-            await session.call_tool("API-patch-page", {
-                "page_id": expert_lesson_ids["Building Python C Extensions"],
-                "properties": {
-                    "Parent item": [{"id": expert_lesson_ids["Metaprogramming and AST Manipulation"]}]
-                }
-            })
-            print(f"✓ Parent set to Metaprogramming and AST Manipulation\n")
-        
-        # ==========================================
-        # Task 7: 添加学习路径内容块到 Bridge 课程 (使用 MCP)
-        # ==========================================
-        
-        print("Task 7️⃣: 添加学习路径内容块 (使用 MCP)...")
-        
+        # Step 8: Add content to Bridge course
         if bridge_id:
-            await session.call_tool("API-patch-block-children", {
-                "block_id": bridge_id,
-                "children": [
-                    {
-                        "object": "block",
-                        "type": "heading_2",
-                        "heading_2": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {"content": "Prerequisites Checklist"}
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "object": "block",
-                        "type": "bulleted_list_item",
-                        "bulleted_list_item": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {"content": "✅ Advanced Python Features (Decorators, Context Managers)"}
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "object": "block",
-                        "type": "bulleted_list_item",
-                        "bulleted_list_item": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {"content": "✅ API Integration and Async Basics"}
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "object": "block",
-                        "type": "bulleted_list_item",
-                        "bulleted_list_item": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {"content": "✅ Pattern Matching and Text Processing"}
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [
-                                {
-                                    "type": "text",
-                                    "text": {"content": "This lesson serves as a checkpoint before entering expert-level content. Ensure you have mastered all prerequisites listed above."}
-                                }
-                            ]
-                        }
-                    }
-                ]
-            })
-            print(f"✓ 内容块已添加\n")
+            print("\n📄 Adding content to Bridge course...")
+            await mcp.add_heading(bridge_id, 2, "Prerequisites Checklist")
+            await mcp.add_bullet_list(bridge_id, [
+                "✅ Advanced Python Features (Decorators, Context Managers)",
+                "✅ API Integration and Async Basics",  
+                "✅ Pattern Matching and Text Processing"
+            ])
+            await mcp.add_paragraph(bridge_id,
+                "This lesson serves as a checkpoint before entering expert-level content. "
+                "Ensure you have mastered all prerequisites listed above."
+            )
+            print("✓ Added prerequisites content")
         
-        # ==========================================
-        # Task 8: 添加 Memory Management 的 Sub-items (使用 MCP)
-        # ==========================================
-        
-        print("Task 8️⃣: 添加 Memory Management Sub-items (使用 MCP)...")
-        
-        if "Memory Management and GC Tuning" in expert_lesson_ids and data_structures_id and oops_id:
-            await session.call_tool("API-patch-page", {
-                "page_id": expert_lesson_ids["Memory Management and GC Tuning"],
-                "properties": {
-                    "Sub-item": [
-                        {"id": data_structures_id},
-                        {"id": oops_id}
-                    ]
-                }
-            })
-            print(f"✓ 2 个 Sub-items 已添加\n")
-        else:
-            print(f"⚠ 缺少必需的课程\n")
-        
-        # ==========================================
-        # 完成
-        # ==========================================
-        
-        print("="*80)
-        print("✅ EXPERT LEVEL LESSONS SKILL COMPLETED")
-        print("="*80)
-        print(f"\n📊 Summary (所有操作都使用了 MCP):")
-        print(f"  ✓ Expert Level 章节已创建: {expert_chapter_id}")
-        print(f"  ✓ Advanced Foundations Review Bridge 课程已创建: {bridge_id}")
-        print(f"  ✓ 4 个专家级课程已创建")
-        print(f"  ✓ 现有课程状态已更新 (MCP)")
-        print(f"  ✓ 所有关系已设置 (MCP)")
-        print(f"  ✓ 学习路径内容已添加 (MCP)")
-        print(f"  ✓ Memory Management Sub-items 已添加 (MCP)")
-        print()
-        
-    except Exception as e:
-        print(f"❌ MCP 错误: {str(e)}")
-        import traceback
-        traceback.print_exc()
-    
-    finally:
-        await stack.aclose()
-
-
-def extract_page_id(data):
-    """从 MCP 响应中提取页面 ID"""
-    if isinstance(data, dict):
-        if "id" in data:
-            return data["id"]
-        elif "content" in data and data["content"]:
-            content_text = data["content"][0].get("text", "")
-            if content_text:
-                import re
-                match = re.search(r'"id":"([^"]+)"', content_text)
-                if match:
-                    return match.group(1)
-    return None
-
+        print("\n" + "=" * 50)
+        print("✅ Expert Level Lessons Skill completed!")
+        print(f"📊 Created: 1 chapter, {len(expert_course_ids) + 1} courses")
+        print("🎯 All operations completed using 100% MCP")
 
 if __name__ == "__main__":
-    asyncio.run(expert_skill_full_mcp())
+    asyncio.run(expert_level_lessons_skill())
