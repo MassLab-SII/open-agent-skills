@@ -1,7 +1,7 @@
 import openai
 
 client = openai.OpenAI(
-	api_key="sk-3blkZv71U7lH1TQbVNOX6A",
+	api_key="sk-GvVJDinGvisIFFhHLjfv6w",
 	base_url="http://101.47.31.49:4000"
 )
 

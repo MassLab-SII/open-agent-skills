@@ -31,10 +31,27 @@
 # python -m pipeline --exp-name test_shopping2 --mcp playwright_webarena --tasks shopping/multi_category_budget_analysis --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_shopping2 --mcp playwright_webarena --tasks shopping/gaming_accessories_analysis --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_shopping2 --mcp playwright_webarena --tasks shopping/printer_keyboard_search --models claude-sonnet-4.5 --k 1
-python -m pipeline --exp-name test_shopping2 --mcp playwright_webarena --tasks shopping/running_shoes_purchase --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping2 --mcp playwright_webarena --tasks shopping/running_shoes_purchase --models claude-sonnet-4.5 --k 1
 
 #下面的实验名字是test_shopping3，相比test_shopping2的修改是：使用gpt5模型
 # python -m pipeline --exp-name test_shopping3 --mcp playwright_webarena --tasks shopping/advanced_product_analysis --models gpt-5 --k 1
 # python -m pipeline --exp-name test_shopping3 --mcp playwright_webarena --tasks shopping/health_routine_optimization --models gpt-5 --k 1
 # python -m pipeline --exp-name test_shopping3 --mcp playwright_webarena --tasks shopping/holiday_baking_competition --models gpt-5 --k 1
 # python -m pipeline --exp-name test_shopping3 --mcp playwright_webarena --tasks shopping/multi_category_budget_analysis --models gpt-5 --k 1
+
+
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/customer_segmentation_setup --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/marketing_customer_analysis --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/search_filtering_operations --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/fitness_promotion_strategy --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/marketing_customer_analysis --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/search_filtering_operations --models claude-sonnet-4.5 --k 1
+
+
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/budget_europe_travel --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/ai_data_analyst --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/buyitforlife_research --models claude-sonnet-4.5 --k 1
+python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/llm_research_summary --models claude-sonnet-4.5 --k 3
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/routine_tracker_forum --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/movie_reviewer_analysis --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/nba_statistics_analysis --models claude-sonnet-4.5 --k 1
