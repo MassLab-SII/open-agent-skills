@@ -220,7 +220,7 @@ class SkillManager:
     ) -> Tuple[bool, str, str]:
         """
         Parse and execute a command from the model's output.
-        Handles Python commands with automatic venv activation.
+        Handles Python commands with automatic venv environment.
         
         Args:
             command: Command string to execute
@@ -246,7 +246,7 @@ class SkillManager:
                 # Activate venv and run Python command
                 success, stdout, stderr = self._execute_python_command(command, cwd)
             else:
-                # Execute as shell command
+                # Execute as shell command. We do not use this in this project.
                 success, stdout, stderr = self._execute_shell_command(command, cwd)
             
             return success, stdout, stderr
@@ -268,8 +268,14 @@ class SkillManager:
             Tuple of (success, stdout, stderr)
         """
         # Parse the command to extract script name and arguments
-        # Format: "python script.py arg1 arg2 ..."
-        parts = command.split()
+        # Use shlex to properly handle quoted arguments with special characters
+        import shlex
+        try:
+            parts = shlex.split(command)
+        except ValueError as e:
+            logger.error(f"Failed to parse command: {command}, error: {e}")
+            return False, "", f"Failed to parse command: {e}"
+        
         if len(parts) < 2:
             logger.error(f"Invalid python command format: {command}")
             return False, "", "Invalid command format"
@@ -291,25 +297,25 @@ class SkillManager:
             logger.error(f"Script does not exist: {script_path}")
             return False, "", f"Script not found: {script_path}"
         
-        # Build the command with absolute script path
-        reconstructed_command = f"python {script_path} {' '.join(script_args)}"
-        
         # Get absolute path to venv activate script
         project_root = Path(__file__).parent.parent
         venv_activate = project_root / self.venv_path / "bin" / "activate"
         
+        # Determine the Python executable to use
         if venv_activate.exists():
-            # Use bash to source the venv and run the command
-            full_command = f"source {venv_activate} && {reconstructed_command}"
-            shell_cmd = ["/bin/bash", "-c", full_command]
+            # Use the venv's Python executable directly (avoids shell escaping issues)
+            python_executable = project_root / self.venv_path / "bin" / "python"
+            if not python_executable.exists():
+                python_executable = "python"  # Fallback
         else:
             logger.warning(f"Virtual environment not found at {self.venv_path}, running without venv")
-            # revised by yxy
-            # shell_cmd = reconstructed_command.split()
-            import shlex
-            shell_cmd = shlex.split(reconstructed_command)
+            python_executable = "python"
         
-        logger.debug(f"Executing: {reconstructed_command}")
+        # Build command as a list (NOT a string) to preserve newlines in arguments
+        # This avoids shell interpretation issues entirely
+        shell_cmd = [str(python_executable), str(script_path)] + script_args
+        
+        logger.debug(f"Executing (list form): {shell_cmd}")
         logger.debug(f"Working directory: {cwd}")
         
         return self._run_subprocess(shell_cmd, cwd)
@@ -369,9 +375,7 @@ class SkillManager:
     def extract_commands_from_text(self, text: str) -> List[str]:
         """
         Extract command strings from model output.
-        Follows the command format specified in the system prompt:
-        - Code blocks with bash/shell/python/sh tags
-        - Lines starting with $ or >
+        Follows the command format specified in the system prompt: Code blocks with bash/shell/python/sh tags
         
         Args:
             text: Text to search for commands
@@ -379,46 +383,75 @@ class SkillManager:
         Returns:
             List of extracted commands (deduplicated and ordered)
         """
-        commands = []
-        seen_commands = set()  # Track seen commands to avoid duplicates
+        import shlex
         
-        # Pattern 1: Code blocks with language tags (bash, shell, python, sh)
+        command = []
+        
+        def extract_commands_from_code(code: str) -> List[str]:
+            """
+            Extract commands from a code block, handling multi-line quoted strings.
+            
+            Args:
+                code: The code block content
+                
+            Returns:
+                List of complete commands
+            """
+            result = []
+            lines = code.split('\n')
+            current_command = []
+            in_quotes = False
+            
+            for line in lines:
+                stripped = line.strip()
+                
+                # Skip empty lines and comments when not in a quoted string
+                if not in_quotes:
+                    if not stripped or stripped.startswith('#'):
+                        continue
+                    
+                
+                # Add this line to current command
+                if current_command:
+                    current_command.append(line)  # Keep original whitespace for multi-line
+                else:
+                    current_command.append(stripped)
+                
+                # Check quote state by scanning the accumulated command
+                full_cmd = '\n'.join(current_command)
+                
+                # Use shlex to check if quotes are balanced
+                try:
+                    shlex.split(full_cmd)
+                    # If no exception, quotes are balanced - command is complete
+                    complete_cmd = full_cmd.strip()
+                    if complete_cmd:
+                        result.append(complete_cmd)
+                    current_command = []
+                    in_quotes = False
+                except ValueError:
+                    # Unbalanced quotes - continue accumulating
+                    in_quotes = True
+            
+            # Handle any remaining accumulated command (even if quotes unbalanced)
+            if current_command:
+                complete_cmd = '\n'.join(current_command).strip()
+                if complete_cmd:
+                    result.append(complete_cmd)
+            
+            return result
+        
         # This is the recommended format from system prompt
         code_block_pattern = r'```(?:bash|shell|python|sh)\s*\n(.*?)```'
-        for match in re.finditer(code_block_pattern, text, re.DOTALL):
+        match = re.search(code_block_pattern, text, re.DOTALL)
+        if match:
             code = match.group(1).strip()
-            # Split by newlines and filter out comments and empty lines
-            for line in code.split('\n'):
-                line = line.strip()
-                # Remove shell prompt if present
-                if line.startswith('$ ') or line.startswith('> '):
-                    line = line[2:].strip()
-                # Skip comments and empty lines
-                if line and not line.startswith('#') and line not in seen_commands:
-                    commands.append(line)
-                    seen_commands.add(line)
+            command = extract_commands_from_code(code)
         
-        # Pattern 2: Generic code blocks (without language tag) containing shell prompts
-        # Format: ```\n$ command\n```
-        generic_block_pattern = r'```\s*\n(.*?)```'
-        for match in re.finditer(generic_block_pattern, text, re.DOTALL):
-            code = match.group(1).strip()
-            for line in code.split('\n'):
-                line = line.strip()
-                # Only extract lines with shell prompt in generic blocks
-                if line.startswith('$ ') or line.startswith('> '):
-                    cmd = line[2:].strip()
-                    if cmd and not cmd.startswith('#') and cmd not in seen_commands:
-                        commands.append(cmd)
-                        seen_commands.add(cmd)
-        
-        # Log extracted commands for debugging
-        if commands:
-            logger.debug(f"Extracted {len(commands)} command(s) from text")
-            for i, cmd in enumerate(commands, 1):
-                logger.debug(f"  Command {i}: {cmd}")
+        # Log extracted command for debugging
+        if command:
+            logger.debug(f"Extracted {len(command)} command(s) from text")
         else:
             logger.debug("No commands extracted from text")
         
-        return commands
-
+        return command
