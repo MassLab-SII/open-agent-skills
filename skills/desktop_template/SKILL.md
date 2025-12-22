@@ -5,70 +5,206 @@ description: Tools for organizing desktop templates, computing personal budgets,
 
 # Desktop Template Utilities
 
-本技能集提供三个工具，用于桌面模板的整理、预算计算和联系人整合：
+This skill set provides three tools for desktop template organization, budget calculation, and contact consolidation:
 
-1. **文件整理**：按类别归档桌面文件
-2. **预算计算**：提取个人生活支出并汇总
-3. **联系人整合**：汇总联系人信息并回答指定问题
+1. **File Arrangement**: Archive desktop files by category
+2. **Budget Computation**: Extract personal living expenses and summarize
+3. **Contact Information**: Consolidate contact info and answer specific questions
 
-## 1) 文件整理（file_arrangement.py）
+## 1) File Arrangement (file_arrangement.py)
 
-按规则将文件移动到统一的分类目录：
-- work/：工作、研究、项目相关
-- life/：个人生活相关
-- archives/：归档、历史、备份、税务等
-- temp/：临时/草稿
-- others/：无法归类的文件
+Moves files to unified categorized directories according to rules:
+- work/: Work, research, project related
+- life/: Personal life related
+- archives/: Archive, history, backup, tax related
+- temp/: Temporary/drafts
+- others/: Files that cannot be categorized
 
-### 用法
+### Usage
 ```bash
 python file_arrangement.py /path/to/desktop_template
 ```
 
-### 特性
-- 自动创建分类目录
-- 依据文件路径和关键词进行分类
-- 不修改文件名，仅移动位置
+### Features
+- Automatically creates categorized directories
+- Classifies based on file path and keywords
+- Does not modify filenames, only moves location
 
-## 2) 预算计算（budget_computation.py）
+## 2) Budget Computation (budget_computation.py)
 
-扫描桌面模板，提取个人生活支出，生成 `total_budget.txt`：
-- 每行：`file_path;price`（相对路径，保留两位小数）
-- 最后一行：总和（两位小数）
+Scans desktop template, extracts personal living expenses, generates `total_budget.txt`:
+- Each line: `file_path;price` (relative path, two decimal places)
+- Last line: Total sum (two decimal places)
 
-### 用法
+### Usage
 ```bash
 python budget_computation.py /path/to/desktop_template
 python budget_computation.py /path/to/desktop_template --output my_budget.txt
 ```
 
-### 特性
-- 排除工作/项目相关路径
-- 解析文件中的数值作为支出条目
-- 汇总总支出
+### Features
+- Excludes work/project related paths
+- Parses numeric values in files as expense entries
+- Summarizes total expenses
 
-## 3) 联系人整合（contact_information.py）
+## 3) Contact Information (contact_information.py)
 
-扫描所有文件，提取联系人信息并生成 `contact_info.csv`，同时回答：
-> Charlie Davis 的职业/工作是什么？
+Scans all files, extracts contact information and generates `contact_info.csv`, also answers:
+> What is Charlie Davis's occupation/job?
 
-输出：
-- `contact_info.csv`：列包含 Name, Email, Phone 以及检测到的其他字段
-- `answer.txt`：上述问题的回答（若无法确定则为 Unknown）
+Output:
+- `contact_info.csv`: Columns include Name, Email, Phone and other detected fields
+- `answer.txt`: Answer to the above question (Unknown if cannot determine)
 
-### 用法
+### Usage
 ```bash
 python contact_information.py /path/to/desktop_template
 ```
 
-### 特性
-- 支持 CSV/文本的联系人信息提取
-- 动态并集所有字段，自动生成表头
-- 生成回答文件 answer.txt
+### Features
+- Supports CSV/text contact information extraction
+- Dynamically unions all fields, automatically generates header
+- Generates answer file answer.txt
 
-## 通用说明
-- 所有脚本依赖 `utils.py` 中的 `FileSystemTools` 进行文件操作
-- 默认使用异步 I/O
-- 不会修改文件内容，只会读取或移动/写入新文件
+## General Notes
+- All scripts rely on `FileSystemTools` from `utils.py` for file operations
+- Default uses async I/O
+- Does not modify file content, only reads or moves/writes new files
 
+---
+
+## II. Basic Tools (FileSystemTools)
+
+Below are the basic tool functions from `utils.py`. These are atomic operations for flexible combination.
+
+### How to Run
+
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+```
+
+---
+
+### File Reading Tools
+
+#### `read_text_file(path, head=None, tail=None)`
+Read complete file contents, or first/last N lines.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt', head=10)"
+```
+
+#### `read_multiple_files(paths)`
+Read multiple files simultaneously.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.read_multiple_files(['/path/a.txt', '/path/b.txt'])"
+```
+
+---
+
+### File Writing Tools
+
+#### `write_file(path, content)`
+Create new file or overwrite existing file.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.write_file('/path/to/new.txt', 'Hello World')"
+```
+
+#### `edit_file(path, edits)`
+Make line-based edits to existing files.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.edit_file('/path/to/file.txt', [{'oldText': 'foo', 'newText': 'bar'}])"
+```
+
+---
+
+### Directory Tools
+
+#### `create_directory(path)`
+Create new directories (supports recursive creation).
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.create_directory('/path/to/new/dir')"
+```
+
+#### `list_directory(path)`
+List all files and directories, returns (files, directories).
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.list_directory('/path/to/directory')"
+```
+
+#### `list_files(path=None, exclude_hidden=True)`
+List only files, optionally exclude hidden files.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.list_files('/path/to/directory')"
+```
+
+---
+
+### File Operations
+
+#### `move_file(source, destination)`
+Move or rename files/directories.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.move_file('/path/old.txt', '/path/new.txt')"
+```
+
+#### `search_files(pattern, base_path=None)`
+Search for files matching glob pattern (e.g., '*.txt', '**/*.py').
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.search_files('*.txt')"
+```
+
+---
+
+### File Information
+
+#### `get_file_info(path)`
+Get detailed metadata (size, created, modified, etc.).
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_file_info('/path/to/file.txt')"
+```
+
+#### `get_file_size(path)`
+Get file size in bytes.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_file_size('/path/to/file.txt')"
+```
+
+#### `get_file_ctime(path)` / `get_file_mtime(path)`
+Get file creation/modification time.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_file_mtime('/path/to/file.txt')"
+```
+
+#### `get_files_info_batch(filenames, base_path=None)`
+Get file info for multiple files in parallel.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_files_info_batch(['a.txt', 'b.txt'], '/path/to/files')"
+```
 

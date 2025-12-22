@@ -5,51 +5,187 @@ description: Tools for managing arXiv paper collections — organize legacy pape
 
 # Papers Management Skill
 
-提供三个针对论文集合的实用脚本：
-1. **组织旧论文**：按年份整理 2023 及更早的论文并生成索引
-2. **作者分组**：识别高频作者并按作者复制论文
-3. **查找数学基准论文**：自动定位并重命名 math 基准相关论文
+Provides three utility scripts for paper collections:
+1. **Organize Legacy Papers**: Organize papers from 2023 and earlier by year and generate indices.
+2. **Author Grouping**: Identify frequent authors and copy papers by author.
+3. **Find Math Benchmark Papers**: Automatically locate and rename math benchmark-related papers.
 
 ## 1) organize_legacy_papers.py
-整理 2023 及更早的 HTML 论文到 `organized/<year>/`，生成索引与汇总。
+Organizes HTML papers from 2023 and earlier into `organized/<year>/`, generating indices and summaries.
 
-### 功能
-- 按 arXiv ID 年份（前两位）移动 2023 及更早论文
-- 2024+ 论文与 `arxiv_2025.bib` 保持原位
-- 每年生成 `INDEX.md`（表：ArXiv ID | Authors | Local Path，作者取前 3 个，>3 时末尾加 et al.）
-- 生成 `organized/SUMMARY.md` 汇总各年
+### Features
+- Moves papers from 2023 and earlier based on arXiv ID year (first two digits).
+- Keeps 2024+ papers and `arxiv_2025.bib` in place.
+- Generates `INDEX.md` for each year (Table: ArXiv ID | Authors | Local Path; takes first 3 authors, appends "et al." if >3).
+- Generates `organized/SUMMARY.md` summarizing all years.
 
-### 用法
+### Usage
 ```bash
 python organize_legacy_papers.py /path/to/papers
 ```
 
 ## 2) author_folders.py
-识别高频作者并复制论文：
-- `frequent_authors/`：总论文数 ≥4 的作者
-- `2025_authors/`：2025 年论文数 ≥3 的作者
-- 作者目录名：小写，空格/逗号替换为下划线
-- 复制（不移动）论文，保留原始文件
+Identifies frequent authors and copies papers:
+- `frequent_authors/`: Authors with total papers ≥4.
+- `2025_authors/`: Authors with 2025 papers ≥3.
+- Author directory names: lowercase, spaces/commas replaced with underscores.
+- Copies (does not move) papers, preserving original files.
 
-### 用法
+### Usage
 ```bash
 python author_folders.py /path/to/papers
 ```
 
 ## 3) find_math_paper.py
-寻找描述“数学基准，检验正确性并分析知识不足/泛化不足/机械记忆”的论文，并将对应 HTML 重命名为 `answer.html`。
+Finds papers describing "math benchmarks, checking correctness and analyzing knowledge gaps/under-generalization/rote memorization", and renames the corresponding HTML to `answer.html`.
 
-### 用法
+### Usage
 ```bash
 python find_math_paper.py /path/to/papers
 ```
 
-### 说明
-- 通过关键词评分选择最符合描述的论文
-- 将选中的论文写为 `answer.html`（若存在同名则覆盖）
+### Notes
+- Selects the paper best matching the description via keyword scoring.
+- Writes the selected paper as `answer.html` (overwrites if exists).
 
-## 通用说明
-- 所有脚本依赖 `utils.py` 的 `FileSystemTools` 进行文件操作
-- 默认异步 I/O
-- 不修改论文内容；仅移动/复制或写出新文件
+## General Notes
+- All scripts rely on `FileSystemTools` from `utils.py` for file operations.
+- Default asynchronous I/O.
+- Does not modify paper content; only moves/copies or writes new files.
+
+---
+
+## II. Basic Tools (FileSystemTools)
+
+Below are the basic tool functions from `utils.py`. These are atomic operations for flexible combination.
+
+### How to Run
+
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+```
+
+---
+
+### File Reading Tools
+
+#### `read_text_file(path, head=None, tail=None)`
+Read complete file contents, or first/last N lines.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+```
+
+#### `read_multiple_files(paths)`
+Read multiple files simultaneously.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.read_multiple_files(['/path/a.txt', '/path/b.txt'])"
+```
+
+---
+
+### File Writing Tools
+
+#### `write_file(path, content)`
+Create new file or overwrite existing file.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.write_file('/path/to/new.txt', 'content')"
+```
+
+#### `edit_file(path, edits)`
+Make line-based edits to existing files.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.edit_file('/path/to/file.txt', [{'oldText': 'foo', 'newText': 'bar'}])"
+```
+
+---
+
+### Directory Tools
+
+#### `create_directory(path)`
+Create new directories (supports recursive creation).
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.create_directory('/path/to/new/dir')"
+```
+
+#### `list_directory(path)`
+List all files and directories, returns (files, directories).
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.list_directory('/path/to/directory')"
+```
+
+#### `list_files(path=None, exclude_hidden=True)`
+List only files, optionally exclude hidden files.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.list_files('/path/to/directory')"
+```
+
+---
+
+### File Operations
+
+#### `move_file(source, destination)`
+Move or rename files/directories.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.move_file('/path/old.txt', '/path/new.txt')"
+```
+
+#### `search_files(pattern, base_path=None)`
+Search for files matching glob pattern (e.g., '*.txt', '**/*.py').
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.search_files('*.txt')"
+```
+
+---
+
+### File Information
+
+#### `get_file_info(path)`
+Get detailed metadata (size, created, modified, etc.).
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_file_info('/path/to/file.txt')"
+```
+
+#### `get_file_size(path)`
+Get file size in bytes.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_file_size('/path/to/file.txt')"
+```
+
+#### `get_file_ctime(path)` / `get_file_mtime(path)`
+Get file creation/modification time.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_file_mtime('/path/to/file.txt')"
+```
+
+#### `get_files_info_batch(filenames, base_path=None)`
+Get file info for multiple files in parallel.
+
+**Example**:
+```bash
+python run_fs_ops.py /path/to/base -c "await fs.get_files_info_batch(['a.txt', 'b.txt'])"
+```
 
