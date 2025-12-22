@@ -26,7 +26,7 @@ In Notion automation, we distinguish two types of operations:
 **Usage**:
 ```bash
 # Basic usage with environment variable
-export EVAL_NOTION_API_KEY="ntn_..."
+export EVAL_NOTION_API_KEY="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"
 python3 remove_osaka_itinerary.py
 
 # Or with custom parameters in code
