@@ -134,7 +134,7 @@ class SkillManager:
         prompt_parts.append(
             "\n\n### Skill Usage Protocol\n\n"
             "When you identify that a task requires a skill:\n"
-            "1. Explicitly mention the skill name in your response (e.g., 'I will use the file-size-classification skill') and stop this response immediately.\n"
+            "1. Explicitly mention the skill name in your response (e.g., 'I will use the file-size-classification skill') and stop this response IMMEDIATELY.\n"
             "2. The full skill documentation will be provided to you automatically\n"
             "3. After reviewing the documentation, output commands using one of these formats:\n\n"
             "**Format - Code Block:**\n"
@@ -143,7 +143,7 @@ class SkillManager:
             "```\n\n"
             "**Important Notes:**\n"
             "- Commands will be executed automatically and their output will be provided back to you\n"
-            "- When you first mention a skill, wait for the full skill documentation to be provided. Do not output ANY commands until you have received and reviewed the complete documentation\n"
+            "- After mentioning a skill by name, STOP your current response immediately. Do NOT output ANY commands until the next turn, when you receive and review the complete skill specification (including name, description, and usage instructions).\n"
             "- When executing Python scripts, use the script name directly without path prefixes (e.g., 'python script.py' not 'python /path/to/script.py'). The system will locate the script automatically\n"
         )
         
