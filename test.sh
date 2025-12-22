@@ -1,0 +1,1 @@
+python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/music_report --models claude-sonnet-4.5 --k 1

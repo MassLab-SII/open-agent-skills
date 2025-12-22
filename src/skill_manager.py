@@ -143,7 +143,7 @@ class SkillManager:
             "```\n\n"
             "**Important Notes:**\n"
             "- Commands will be executed automatically and their output will be provided back to you\n"
-            "- When you first mention a skill, wait for the full skill documentation to be provided. Do not output commands until you have received and reviewed the complete documentation\n"
+            "- When you first mention a skill, wait for the full skill documentation to be provided. Do not output ANY commands until you have received and reviewed the complete documentation\n"
             "- When executing Python scripts, use the script name directly without path prefixes (e.g., 'python script.py' not 'python /path/to/script.py'). The system will locate the script automatically\n"
         )
         
