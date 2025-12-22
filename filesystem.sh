@@ -48,10 +48,16 @@
 # python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/search_filtering_operations --models claude-sonnet-4.5 --k 1
 
 
-# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/budget_europe_travel --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_reddit_show --mcp playwright_webarena --tasks reddit/budget_europe_travel --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/ai_data_analyst --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/buyitforlife_research --models claude-sonnet-4.5 --k 1
-python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/llm_research_summary --models claude-sonnet-4.5 --k 3
+# python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/llm_research_summary --models claude-sonnet-4.5 --k 3
 # python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/routine_tracker_forum --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/movie_reviewer_analysis --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_reddit --mcp playwright_webarena --tasks reddit/nba_statistics_analysis --models claude-sonnet-4.5 --k 1
+
+
+python -m pipeline --exp-name test_playwright --mcp playwright --tasks eval_web/cloudflare_turnstile_challenge --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_playwright --mcp playwright_webarena --tasks eval_web/extraction_table --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_playwright --mcp playwright_webarena --tasks web_search/birth_of_arvinxu --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_playwright --mcp playwright_webarena --tasks web_search/r1_arxiv --models claude-sonnet-4.5 --k 1

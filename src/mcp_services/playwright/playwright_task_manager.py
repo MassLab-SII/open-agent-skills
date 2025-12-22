@@ -96,7 +96,7 @@ class PlaywrightTaskManager(BaseTaskManager):
             env=env,
         )
 
-    def _format_task_instruction(self, base_instruction: str) -> str:
+    def _format_task_instruction(self, base_instruction: str, task: BaseTask = None) -> str:
         """Add Playwright-specific note to instructions."""
         return (
             base_instruction
