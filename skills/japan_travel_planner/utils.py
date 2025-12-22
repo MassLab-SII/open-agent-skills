@@ -1,340 +1,293 @@
 """
-Notion utilities for Japan Travel Planner skills.
-Extends the base NotionTools with specific utilities for travel itineraries.
+MCP Tools for Notion Operations (Japan Travel Planner)
+=====================================================================
+
+Pure MCP tool wrapper for Notion operations without using notion_client library.
+All operations are performed via MCP protocol tools.
 """
 
+import asyncio
+import json
 import os
-import sys
-from typing import Dict, List, Optional, Tuple
-from notion_client import Client
-from dotenv import load_dotenv
-
-# Add the parent directory to the path to import src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-from src.logger import get_logger
-
-logger = get_logger(__name__)
+from contextlib import AsyncExitStack
+from typing import Optional, List, Dict, Any
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 
-class TravelNotionTools:
-    """Specialized Notion tools for travel planner database operations."""
-
-    def __init__(self, api_key: str = None):
-        """Initialize TravelNotionTools with Notion API client."""
-        if api_key is None:
-            # Try to load from environment first
-            api_key = os.getenv("EVAL_NOTION_API_KEY")
-            
-            # If not found, try to load from .mcp_env file
-            if not api_key:
-                load_dotenv(dotenv_path=".mcp_env")
-                api_key = os.getenv("EVAL_NOTION_API_KEY")
-        
-        if not api_key:
-            raise ValueError("EVAL_NOTION_API_KEY not found in environment or .mcp_env")
-        
-        self.client = Client(auth=api_key)
-        self.logger = logger
-
-    def search_page(self, query: str, object_type: str = "page") -> Optional[str]:
+class NotionMCPTools:
+    """
+    Pure MCP tools for Notion operations via MCP protocol
+    All methods call MCP tools and return raw results
+    """
+    
+    def __init__(self, api_key: str, timeout: int = 120):
         """
-        Search for a page by query string.
+        Initialize MCP tools.
+        
+        Args:
+            api_key: Notion API key
+            timeout: MCP operation timeout in seconds
+        """
+        self.api_key = api_key
+        self.timeout = timeout
+        self._stack = None
+        self.session = None
+    
+    async def __aenter__(self):
+        """Initialize MCP connection"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Notion-Version": "2022-06-28"
+        }
+        
+        params = StdioServerParameters(
+            command="npx",
+            args=["-y", "@notionhq/notion-mcp-server"],
+            env={**os.environ, "OPENAPI_MCP_HEADERS": json.dumps(headers)},
+        )
+        
+        self._stack = AsyncExitStack()
+        read, write = await self._stack.enter_async_context(stdio_client(params))
+        self.session = await self._stack.enter_async_context(ClientSession(read, write))
+        await asyncio.wait_for(self.session.initialize(), timeout=self.timeout)
+        
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Close MCP connection"""
+        if self._stack:
+            await self._stack.aclose()
+        self._stack = None
+        self.session = None
+    
+    # ==================== Core MCP Tools ====================
+    
+    async def search(self, query: str) -> Optional[str]:
+        """
+        Search pages and databases in Notion
         
         Args:
             query: Search query string
-            object_type: Type of object to search ('page' or 'database')
-        
+            
         Returns:
-            Page ID if found, None otherwise
+            Raw MCP result as JSON string or None on error
         """
         try:
-            response = self.client.search(query=query, filter={"value": object_type, "property": "object"})
-            results = response.get("results", [])
-            if results:
-                page_id = results[0].get("id")
-                self.logger.info(f"Found {object_type}: {page_id}")
-                return page_id
-            self.logger.warning(f"No {object_type} found for query: {query}")
-            return None
+            result = await self.session.call_tool("API-post-search", {
+                "query": query
+            })
+            return self._extract_text(result)
         except Exception as e:
-            self.logger.error(f"Error searching for '{query}': {e}")
+            print(f"❌ Search error: {e}")
             return None
-
-    def find_database_in_children(self, parent_id: str, db_name: str) -> Optional[str]:
+    
+    async def get_page(self, page_id: str) -> Optional[str]:
         """
-        Find a child database by name within a page.
+        Retrieve a page by ID
         
         Args:
-            parent_id: Parent page ID
-            db_name: Database name to search for
-        
+            page_id: Page ID
+            
         Returns:
-            Database ID if found, None otherwise
+            Raw MCP result as JSON string or None on error
         """
         try:
-            # Get all blocks of the parent page
-            blocks = self._get_all_blocks_recursively(parent_id)
-            
-            for block in blocks:
-                if block.get("type") == "child_database":
-                    child_db = block.get("child_database", {})
-                    title = child_db.get("title", "")
-                    if db_name.lower() in title.lower():
-                        # Found child_database block, but need to find actual database ID
-                        # Try searching for the database by name
-                        actual_db_id = self._find_database_by_search(db_name)
-                        if actual_db_id:
-                            self.logger.info(f"Found database '{db_name}': {actual_db_id}")
-                            return actual_db_id
-                        
-                        # Fallback: use the child_database block ID
-                        db_id = block.get("id")
-                        self.logger.info(f"Found database '{db_name}' (child_database): {db_id}")
-                        return db_id
-            
-            self.logger.warning(f"Database '{db_name}' not found in page {parent_id}")
-            return None
+            result = await self.session.call_tool("API-retrieve-a-page", {
+                "page_id": page_id
+            })
+            return self._extract_text(result)
         except Exception as e:
-            self.logger.error(f"Error finding database '{db_name}': {e}")
+            print(f"❌ Get page error: {e}")
             return None
-
-    def _find_database_by_search(self, db_name: str) -> Optional[str]:
+    
+    async def get_block_children(self, block_id: str) -> Optional[str]:
         """
-        Search for a database by name using the Notion search API.
-        Returns the database ID that can be used for querying.
+        Retrieve children blocks of a specified block
         
         Args:
-            db_name: Database name to search for
-        
+            block_id: Block/Page ID
+            
         Returns:
-            Database ID if found, None otherwise
+            Raw MCP result as JSON string or None on error
         """
         try:
-            response = self.client.search(query=db_name)
-            
-            results = response.get("results", [])
-            for result in results:
-                result_type = result.get("object")
-                
-                # Prefer database objects first
-                if result_type == "database":
-                    db_id = result.get("id")
-                    self.logger.info(f"Found database object: {db_id}")
-                    return db_id
-            
-            # If no database found, try data_source
-            for result in results:
-                result_type = result.get("object")
-                if result_type == "data_source":
-                    # Found a data_source, use it directly for querying
-                    data_source_id = result.get("id")
-                    self.logger.info(f"Found data_source (usable for query): {data_source_id}")
-                    return data_source_id
-            
-            return None
+            result = await self.session.call_tool("API-get-block-children", {
+                "block_id": block_id
+            })
+            return self._extract_text(result)
         except Exception as e:
-            self.logger.debug(f"Error searching for database '{db_name}': {e}")
+            print(f"❌ Get block children error: {e}")
             return None
-
-    def query_database_with_filter(self, db_id: str, filter_criteria: Dict) -> List[Dict]:
+    
+    async def query_database(self, database_id: str, filter_obj: Dict[str, Any] = None, 
+                            sorts: List[Dict] = None) -> Optional[str]:
         """
-        Query a database with filter criteria.
+        Query a Notion database with optional filters and sorts
         
         Args:
-            db_id: Database ID
-            filter_criteria: Filter dictionary for notion.databases.query()
-        
+            database_id: Database ID
+            filter_obj: Optional filter object for the query
+            sorts: Optional list of sort configurations
+            
         Returns:
-            List of page results
+            Raw MCP result as JSON string or None on error
         """
         try:
-            results = []
-            has_more = True
-            start_cursor = None
+            args = {
+                "database_id": database_id
+            }
             
-            while has_more:
-                # Try using data_sources.query() which is the newer API
-                try:
-                    response = self.client.data_sources.query(
-                        data_source_id=db_id,
-                        filter=filter_criteria,
-                        start_cursor=start_cursor
-                    )
-                except Exception as e:
-                    # Fallback: try databases.query() if it exists
-                    self.logger.debug(f"data_sources.query failed, trying databases.query: {e}")
-                    if hasattr(self.client.databases, 'query'):
-                        response = self.client.databases.query(
-                            database_id=db_id,
-                            filter=filter_criteria,
-                            start_cursor=start_cursor
-                        )
-                    else:
-                        raise
-                
-                results.extend(response.get("results", []))
-                has_more = response.get("has_more", False)
-                start_cursor = response.get("next_cursor")
+            if filter_obj:
+                args["filter"] = filter_obj
             
-            self.logger.info(f"Query returned {len(results)} results from database {db_id}")
-            return results
+            if sorts:
+                args["sorts"] = sorts
+            
+            result = await self.session.call_tool("API-post-database-query", args)
+            return self._extract_text(result)
         except Exception as e:
-            self.logger.error(f"Error querying database {db_id}: {e}")
-            return []
-
-    def get_page_property(self, page: Dict, property_name: str, default: str = None) -> Optional[str]:
-        """
-        Extract a property value from a page result.
-        
-        Args:
-            page: Page result from Notion API
-            property_name: Name of the property to extract
-            default: Default value if property not found
-        
-        Returns:
-            Property value as string, or default value if not found
-        """
-        try:
-            properties = page.get("properties", {})
-            prop = properties.get(property_name, {})
-            prop_type = prop.get("type")
-            
-            if prop_type == "title":
-                title_array = prop.get("title", [])
-                if title_array:
-                    return title_array[0].get("plain_text", "")
-            
-            elif prop_type == "rich_text":
-                rich_text_array = prop.get("rich_text", [])
-                if rich_text_array:
-                    return rich_text_array[0].get("plain_text", "")
-            
-            elif prop_type == "select":
-                select = prop.get("select", {})
-                if select:
-                    return select.get("name", "")
-            
-            elif prop_type == "date":
-                date = prop.get("date", {})
-                if date:
-                    return date.get("start", "")
-            
-            return default
-        except Exception as e:
-            self.logger.error(f"Error extracting property '{property_name}': {e}")
-            return default
-
-    def parse_time_to_minutes(self, time_str: str) -> Optional[int]:
-        """
-        Convert time string to minutes since midnight for comparison.
-        Supports formats like "6 PM", "6:30 PM", "18:00", etc.
-        
-        Args:
-            time_str: Time string to parse
-        
-        Returns:
-            Minutes since midnight (0-1439), or None if unparseable
-        """
-        if not time_str:
+            print(f"❌ Query database error: {e}")
             return None
-        
-        try:
-            time_str = time_str.strip().upper()
-            # Remove trailing newlines/whitespace
-            time_str = time_str.split('\n')[0].strip()
-            
-            if "PM" in time_str:
-                time_part = time_str.replace("PM", "").strip()
-                if ":" in time_part:
-                    hours, minutes = map(int, time_part.split(":"))
-                else:
-                    hours = int(time_part)
-                    minutes = 0
-                
-                # Convert to 24-hour format
-                if hours != 12:
-                    hours += 12
-                return hours * 60 + minutes
-            
-            elif "AM" in time_str:
-                time_part = time_str.replace("AM", "").strip()
-                if ":" in time_part:
-                    hours, minutes = map(int, time_part.split(":"))
-                else:
-                    hours = int(time_part)
-                    minutes = 0
-                
-                # Handle 12 AM (midnight)
-                if hours == 12:
-                    hours = 0
-                return hours * 60 + minutes
-            
-            else:
-                # Try parsing as 24-hour format
-                if ":" in time_str:
-                    hours, minutes = map(int, time_str.split(":"))
-                    return hours * 60 + minutes
-                else:
-                    hours = int(time_str)
-                    return hours * 60
-        
-        except Exception as e:
-            self.logger.warning(f"Could not parse time '{time_str}': {e}")
-            return None
-
-    def archive_page(self, page_id: str) -> bool:
+    
+    async def patch_page(self, page_id: str, archived: bool = True) -> Optional[str]:
         """
-        Archive (soft delete) a page.
+        Archive or update a page
         
         Args:
             page_id: Page ID to archive
-        
+            archived: Whether to archive the page (default: True)
+            
         Returns:
-            True if successful, False otherwise
+            Raw MCP result as JSON string or None on error
         """
         try:
-            self.client.pages.update(page_id=page_id, archived=True)
-            self.logger.info(f"Archived page: {page_id}")
-            return True
+            result = await self.session.call_tool("API-patch-page", {
+                "page_id": page_id,
+                "archived": archived
+            })
+            return self._extract_text(result)
         except Exception as e:
-            self.logger.error(f"Error archiving page {page_id}: {e}")
-            return False
-
-    def _get_all_blocks_recursively(self, block_id: str, depth: int = 0, max_depth: int = 10) -> List[Dict]:
+            print(f"❌ Patch page error: {e}")
+            return None
+    
+    # ==================== Helper Methods ====================
+    
+    def _extract_text(self, result) -> Optional[str]:
         """
-        Recursively retrieve all blocks within a page or block.
+        Extract text content from MCP result
         
         Args:
-            block_id: Block/page ID to retrieve
-            depth: Current recursion depth
-            max_depth: Maximum recursion depth to prevent infinite loops
-        
+            result: MCP result object
+            
         Returns:
-            List of all blocks found
+            Extracted text content or None
         """
-        if depth > max_depth:
-            return []
-        
         try:
-            all_blocks = []
-            has_more = True
-            start_cursor = None
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result
+            content = result_dict.get("content", [])
+            if content and len(content) > 0:
+                return content[0].get("text", "")
+        except (KeyError, IndexError, TypeError, AttributeError):
+            pass
+        return None
+
+
+def parse_time_to_minutes(time_str: str) -> Optional[int]:
+    """
+    Convert time string to minutes since midnight for comparison.
+    Supports formats like "6 PM", "6:30 PM", "18:00", etc.
+    
+    Args:
+        time_str: Time string to parse
+    
+    Returns:
+        Minutes since midnight (0-1439), or None if unparseable
+    """
+    if not time_str:
+        return None
+    
+    try:
+        time_str = time_str.strip().upper()
+        # Remove trailing newlines/whitespace
+        time_str = time_str.split('\n')[0].strip()
+        
+        if "PM" in time_str:
+            time_part = time_str.replace("PM", "").strip()
+            if ":" in time_part:
+                hours, minutes = map(int, time_part.split(":"))
+            else:
+                hours = int(time_part)
+                minutes = 0
             
-            while has_more:
-                response = self.client.blocks.children.list(block_id=block_id, start_cursor=start_cursor)
-                blocks = response.get("results", [])
-                all_blocks.extend(blocks)
-                
-                has_more = response.get("has_more", False)
-                start_cursor = response.get("next_cursor")
+            # Convert to 24-hour format
+            if hours != 12:
+                hours += 12
+            return hours * 60 + minutes
+        
+        elif "AM" in time_str:
+            time_part = time_str.replace("AM", "").strip()
+            if ":" in time_part:
+                hours, minutes = map(int, time_part.split(":"))
+            else:
+                hours = int(time_part)
+                minutes = 0
             
-            # Recursively get children of blocks that have children
-            for block in all_blocks:
-                if block.get("has_children"):
-                    children = self._get_all_blocks_recursively(block["id"], depth + 1, max_depth)
-                    all_blocks.extend(children)
-            
-            return all_blocks
-        except Exception as e:
-            self.logger.error(f"Error getting blocks for {block_id}: {e}")
-            return []
+            # Handle 12 AM (midnight)
+            if hours == 12:
+                hours = 0
+            return hours * 60 + minutes
+        
+        else:
+            # Try parsing as 24-hour format
+            if ":" in time_str:
+                hours, minutes = map(int, time_str.split(":"))
+                return hours * 60 + minutes
+            else:
+                hours = int(time_str)
+                return hours * 60
+    
+    except Exception:
+        return None
+
+
+def extract_page_property(page_result: Dict, property_name: str) -> Optional[str]:
+    """
+    Extract a property value from a Notion page result.
+    
+    Args:
+        page_result: Page result from Notion API
+        property_name: Name of the property to extract
+    
+    Returns:
+        Property value as string, or None if not found
+    """
+    try:
+        properties = page_result.get("properties", {})
+        prop = properties.get(property_name, {})
+        prop_type = prop.get("type")
+        
+        if prop_type == "title":
+            title_array = prop.get("title", [])
+            if title_array:
+                return title_array[0].get("plain_text", "")
+        
+        elif prop_type == "rich_text":
+            rich_text_array = prop.get("rich_text", [])
+            if rich_text_array:
+                return rich_text_array[0].get("plain_text", "")
+        
+        elif prop_type == "select":
+            select = prop.get("select", {})
+            if select:
+                return select.get("name", "")
+        
+        elif prop_type == "date":
+            date = prop.get("date", {})
+            if date:
+                return date.get("start", "")
+        
+        return None
+    except Exception:
+        return None
+
