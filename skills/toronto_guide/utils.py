@@ -101,6 +101,66 @@ class NotionMCPTools:
             print(f"❌ Query database error: {e}")
             return None
     
+    async def retrieve_database(self, database_id: str) -> Optional[str]:
+        """
+        Retrieve a database by ID
+        
+        Args:
+            database_id: Database ID
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-retrieve-a-database", {
+                "database_id": database_id
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Retrieve database error: {e}")
+            return None
+    
+    async def update_database(self, database_id: str, properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Update database properties (e.g., tag colors)
+        
+        Args:
+            database_id: Database ID
+            properties: Properties to update
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-update-a-database", {
+                "database_id": database_id,
+                "properties": properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update database error: {e}")
+            return None
+    
+    async def update_block(self, block_id: str, **kwargs) -> Optional[str]:
+        """
+        Update a block (e.g., callout color)
+        
+        Args:
+            block_id: Block ID
+            **kwargs: Block properties to update (e.g., callout={'color': 'blue_background'})
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            args = {"block_id": block_id}
+            args.update(kwargs)
+            result = await self.session.call_tool("API-update-a-block", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update block error: {e}")
+            return None
+    
     async def get_block_children(self, block_id: str) -> Optional[str]:
         """
         Retrieve children blocks of a specified block
