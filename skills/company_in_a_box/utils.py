@@ -285,3 +285,79 @@ class NotionMCPTools:
         """
         block = self.create_paragraph_block(text)
         return await self.patch_block_children(block_id, [block])
+    
+    async def create_database(self, parent_page_id: str, title: str, 
+                             properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Create a new database
+        
+        Args:
+            parent_page_id: Parent page ID
+            title: Database title
+            properties: Database properties
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            args = {
+                "parent": {
+                    "page_id": parent_page_id,
+                    "type": "page_id"
+                },
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {"content": title}
+                    }
+                ],
+                "properties": properties
+            }
+            
+            result = await self.session.call_tool("API-create-a-database", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create database error: {e}")
+            return None
+    
+    async def create_page(self, parent_id: str, 
+                         properties: Dict[str, Any],
+                         children: Optional[List[Dict]] = None,
+                         parent_type: Optional[str] = None) -> Optional[str]:
+        """
+        Create a new page
+        
+        Args:
+            parent_id: Database ID or Page ID (depends on parent_type)
+            properties: Page properties to set
+            children: Optional list of child blocks
+            parent_type: Type of parent - 'database_id' or 'page_id'. 
+                        If None, auto-detect (32-char UUID typically database, otherwise assume page)
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            # Auto-detect parent type if not specified
+            if parent_type is None:
+                # Simple heuristic: if it looks like it could be either, try to infer
+                # For safety, assume database_id if not specified explicitly
+                parent_type = "database_id"
+            
+            args = {
+                "parent": {
+                    parent_type: parent_id,
+                    "type": parent_type
+                },
+                "properties": properties
+            }
+            
+            if children:
+                args["children"] = children
+            
+            result = await self.session.call_tool("API-post-page", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create page error: {e}")
+            return None
+

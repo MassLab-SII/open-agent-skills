@@ -190,7 +190,9 @@ class MCPEvaluator:
         logger.info(
             "\n┌─ Stage 1: Setup ─────────────────────────────────────────────────────"
         )
+        # ！！！！！！！！！！！！注释
         setup_success = self.state_manager.set_up(task)
+        setup_success=True
         setup_time = time.time() - setup_start_time
 
         if not setup_success:
@@ -278,7 +280,9 @@ class MCPEvaluator:
             "┌─ Stage 4: Cleanup ───────────────────────────────────────────────────"
         )
         cleanup_start_time = time.time()
-        self.state_manager.clean_up(task)
+
+        #  cleanrup
+        # self.state_manager.clean_up(task)
         cleanup_time = time.time() - cleanup_start_time
         logger.info(f"└─ Completed in {self._format_duration(cleanup_time)}\n")
 

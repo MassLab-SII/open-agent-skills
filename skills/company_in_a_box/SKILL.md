@@ -274,3 +274,167 @@ Success: Verified goal restructuring with new toggle blocks and descriptions.
 - Rich text annotations
 - Block deletion and moving
 
+
+---
+
+## Employee Onboarding
+
+| Aspect | Details |
+|--------|---------|
+| **Skill Name** | Employee Onboarding System |
+| **Domain** | Company In A Box |
+| **Description** | Creates a comprehensive employee onboarding system with checklist database and onboarding hub |
+| **File** | `employee_onboarding.py` |
+
+### Core Concepts
+
+1. **Database Creation**: Create a structured Employee Onboarding Checklist database with properties for employee name, start date, and department
+2. **Sample Data Population**: Populate checklist with 3 sample employees (Alice, Bob, Carol) across different departments
+3. **Hub Page Construction**: Create an Onboarding Hub page with embedded database reference and organized sections for benefits, timeline, and feedback
+4. **Benefit Linking**: Search for and link to existing benefit policy pages via @-mentions in the Onboarding Hub
+5. **Multi-Block Structure**: Construct complex page with multiple child block types (headings, lists, to-dos, database references)
+
+### Execution Flow
+
+The skill performs a 5-step orchestrated MCP workflow:
+
+1. **Search for Company In A Box Page** (API-post-search)
+   - Locates the parent page for all onboarding content
+   - Validates object type is "page"
+
+2. **Search for Benefit Policy Pages** (API-post-search x3+)
+   - Retrieves IDs for: Benefits policy, Vacation Policy, Corporate travel
+   - Implements fallback searches if primary names don't match
+   - Stores page IDs for later @-mention linking
+
+3. **Create Employee Onboarding Checklist Database** (API-create-a-database)
+   - Parent: Company In A Box page
+   - Title: "Employee Onboarding Checklist"
+   - Properties:
+     - **Employee Name** (type: title)
+     - **Start Date** (type: date)
+     - **Department** (type: select with options: Product, Marketing, Sales, HR, Engineering)
+
+4. **Create 3 Employee Entries** (API-post-page x3)
+   - Alice Johnson | Start: 2025-10-01 | Department: Engineering
+   - Bob Smith | Start: 2025-10-05 | Department: Marketing
+   - Carol Lee | Start: 2025-10-10 | Department: HR
+
+5. **Create Onboarding Hub Page with Children** (API-post-page)
+   - Parent: Company In A Box page
+   - Title: "Onboarding Hub"
+   - Child Blocks:
+     - child_database: Reference to Employee Onboarding Checklist
+     - heading_2: "Benefits Overview"
+     - bulleted_list_item (x3): Benefit policy mentions
+     - heading_2: "30-Day Timeline"
+     - numbered_list_item (x7): Onboarding timeline steps
+     - heading_2: "Feedback Form"
+     - to_do (x3): Feedback completion tasks
+
+### Basic Tools
+
+| Tool | MCP API | Purpose |
+|------|---------|---------|
+| `search(query)` | API-post-search | Find pages/databases by name with object type filtering |
+| `create_database(parent_id, title, properties)` | API-create-a-database | Create new database with schema in parent page |
+| `create_page(parent_id, properties, children)` | API-post-page | Create page with properties and optional children blocks |
+
+### Created Structure
+
+**Database: Employee Onboarding Checklist**
+```
+Employee Onboarding Checklist
+├── Properties:
+│   ├── Employee Name (title)
+│   ├── Start Date (date)
+│   └── Department (select)
+└── Entries:
+    ├── Alice Johnson | 2025-10-01 | Engineering
+    ├── Bob Smith | 2025-10-05 | Marketing
+    └── Carol Lee | 2025-10-10 | HR
+```
+
+**Page: Onboarding Hub**
+```
+Onboarding Hub
+├── Embedded Database: Employee Onboarding Checklist
+├── Section: Benefits Overview
+│   ├── @mention: Benefits policy
+│   ├── @mention: Vacation Policy
+│   └── @mention: Corporate travel
+├── Section: 30-Day Timeline
+│   ├── Day 1: Account setup & access provisioning
+│   ├── Day 2-3: Team introductions & workspace tour
+│   ├── Day 4-5: System & process training
+│   ├── Week 2: Project assignment & team kickoff
+│   ├── Week 3-4: Mentorship check-ins
+│   ├── Day 30: Performance review discussion
+│   └── Post-30 days: Ongoing development plan
+└── Section: Feedback Form
+    ├── ☐ Complete day 1 onboarding survey
+    ├── ☐ Manager check-in scheduled
+    └── ☐ 30-day review completed
+```
+
+### Expected Output
+
+Successful execution returns:
+```python
+{
+    "success": True,
+    "checklist_db_id": "c7d1e8f2-a9b3-4e2f-9c1a-2d5e8f7b4a3c",
+    "onboarding_hub_id": "b2c4e6f8-d9e1-4a3c-8b5d-7f2e4c6a9d1b",
+    "employees_created": 3,
+    "errors": []
+}
+```
+
+### Implementation Details
+
+**Database Property Format**
+- Title: `{"title": {}}`
+- Date: `{"date": {}}`
+- Select: `{"select": {"options": [{"name": "Engineering"}, ...]}}`
+
+**Page Property Format**
+- Title: `{"title": [{"text": {"content": "Employee Name"}}]}`
+- Date: `{"date": {"start": "2025-10-01"}}`
+- Select: `{"select": {"name": "Engineering"}}`
+
+**Children Block Types**
+```python
+{
+    "type": "child_database",
+    "child_database": {"database_id": "..."}
+}
+
+{
+    "type": "heading_2",
+    "heading_2": {"rich_text": [{"text": {"content": "..."}}]}
+}
+
+{
+    "type": "bulleted_list_item",
+    "bulleted_list_item": {"rich_text": [{"text": {"content": "..."}}]}
+}
+
+{
+    "type": "numbered_list_item",
+    "numbered_list_item": {"rich_text": [{"text": {"content": "..."}}]}
+}
+
+{
+    "type": "to_do",
+    "to_do": {"rich_text": [...], "checked": False}
+}
+```
+
+### Error Handling
+
+1. **Company Page Not Found**: Logs error and stops execution
+2. **Benefit Page Search Failures**: Implements fallback searches (e.g., "benefits" if "Benefits policy" fails)
+3. **Database Creation Errors**: Catches API errors and reports in results
+4. **Property Format Validation**: Ensures title, select, and date properties match API requirements
+5. **Block Structure Validation**: Validates children blocks before submission to API
+

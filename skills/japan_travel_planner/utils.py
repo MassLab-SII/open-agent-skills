@@ -171,6 +171,31 @@ class NotionMCPTools:
             print(f"❌ Patch page error: {e}")
             return None
     
+    async def create_page(self, parent_database_id: str, properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Create a new page in a database
+        
+        Args:
+            parent_database_id: Database ID where the page will be created
+            properties: Page properties to set
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            args = {
+                "parent": {
+                    "database_id": parent_database_id
+                },
+                "properties": properties
+            }
+            
+            result = await self.session.call_tool("API-post-page", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create page error: {e}")
+            return None
+    
     # ==================== Helper Methods ====================
     
     def _extract_text(self, result) -> Optional[str]:

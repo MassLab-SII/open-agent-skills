@@ -905,6 +905,9 @@ class MCPMarkAgent(BaseMCPAgent):
                         messages.append({"role": "user", "content": skill_context})
                         self._update_progress(messages, total_tokens, turn_count)
                         skill_context_added = True
+                    # Continue loop to let model process skill documentation
+                    # added by huxy: if skill context is added, then we should not add it again
+                    continue
                 
                 # If commands were executed, add results
                 if command_results:

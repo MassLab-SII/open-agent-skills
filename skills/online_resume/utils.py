@@ -171,6 +171,22 @@ class NotionMCPTools:
             print(f"❌ Update database error: {e}")
             return {}
     
+    async def create_database(self, parent_id: str, title: str, properties: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new database using API-create-a-database."""
+        try:
+            result = await self.client.call_tool("API-create-a-database", {
+                "parent": {"type": "page_id", "page_id": parent_id},
+                "title": [{"text": {"content": title}}],
+                "properties": properties
+            })
+            text_result = self._extract_text(result)
+            if text_result:
+                return json.loads(text_result)
+            return {}
+        except Exception as e:
+            print(f"❌ Create database error: {e}")
+            return {}
+    
     async def patch_block_children(self, block_id: str, children: List[Dict[str, Any]], 
                                   after: Optional[str] = None) -> Dict[str, Any]:
         """Patch block children using API-patch-block-children."""
