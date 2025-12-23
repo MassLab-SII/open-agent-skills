@@ -196,6 +196,100 @@ class NotionMCPTools:
             print(f"❌ Create page error: {e}")
             return None
     
+    async def update_page_property(self, page_id: str, properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Update page properties
+        
+        Args:
+            page_id: Page ID to update
+            properties: Properties to update
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-patch-page", {
+                "page_id": page_id,
+                "properties": properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update page property error: {e}")
+            return None
+    
+    async def append_block_children(self, block_id: str, children: List[Dict[str, Any]]) -> Optional[str]:
+        """
+        Append children blocks to a specified block/page
+        
+        Args:
+            block_id: Parent block/page ID
+            children: List of block objects to append
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            # Try API-patch-page-children first
+            result = await self.session.call_tool("API-patch-page-children", {
+                "page_id": block_id,
+                "children": children
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"⚠️  API-patch-page-children not available: {e}")
+            
+            # Try append-block-children
+            try:
+                result = await self.session.call_tool("API-append-block-children", {
+                    "block_id": block_id,
+                    "children": children
+                })
+                return self._extract_text(result)
+            except Exception as e2:
+                print(f"⚠️  API-append-block-children not available: {e2}")
+                
+                # Try creating blocks one by one using API-post-page
+                try:
+                    all_results = []
+                    for child in children:
+                        child_type = child.get("type")
+                        child_data = child.get(child_type, {})
+                        
+                        result = await self.session.call_tool("API-post-page", {
+                            "parent": {"page_id": block_id},
+                            "type": child_type,
+                            child_type: child_data
+                        })
+                        if result:
+                            all_results.append(self._extract_text(result))
+                    
+                    if all_results:
+                        return all_results[0]
+                except Exception as e3:
+                    print(f"⚠️  Block creation via API-post-page failed: {e3}")
+            
+            return None
+    
+    async def update_block(self, block_id: str, block_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Update a block
+        
+        Args:
+            block_id: Block ID to update
+            block_data: Block data to update (e.g., {"paragraph": {...}})
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            args = {"block_id": block_id}
+            args.update(block_data)
+            result = await self.session.call_tool("API-update-a-block", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update block error: {e}")
+            return None
+    
     # ==================== Helper Methods ====================
     
     def _extract_text(self, result) -> Optional[str]:

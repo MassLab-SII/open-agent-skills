@@ -1,210 +1,169 @@
-| name | description |---
+# Japan Travel Planner Skills Documentation
 
-|------|-------------|name: remove-osaka-itinerary
+This directory contains MCP-based skills for managing Japan travel planning tasks in Notion.
 
-| remove-osaka-itinerary | Removes itinerary items from Osaka after 6 PM for Day 1 and Day 2 using MCP tools. |description: Removes itinerary items from Osaka after 6 PM for Day 1 and Day 2 in the Japan Travel Planner using 100% MCP tools.
+## Skills Overview
 
-| restaurant-expenses-sync | Syncs restaurants from Day 1 Travel Itinerary to Expenses database with standardized entries (date: Jan 1 2025, cost: $120, category: Dining). |---
+### 1. Remove Osaka Itinerary (`remove_osaka_itinerary.py`)
 
+Remove itinerary items from the Travel Itinerary database based on:
+- **Location filter**: Remove items from specific locations (e.g., Osaka)
+- **Day filter**: Target specific days (e.g., Day 1, Day 2)
+- **Time threshold**: Remove entries after a specified time (default: 6 PM)
 
-
-# Japan Travel Planner Skills# Japan Travel Planner - Remove Osaka Itinerary Skill
-
-
-
-This skill collection leverages Notion MCP tools for travel planning operations.This skill removes itinerary items from Osaka after 6 PM on Day 1 and Day 2 using MCP-based database operations.
-
-
-
-## Core Concepts## Core Concepts
-
-
-
-In Notion automation, we distinguish two types of operations:In Notion automation, we distinguish two types of operations:
-
-
-
-**Skill**: Meaningful combinations of multiple MCP tool calls, encapsulated as independent Python scripts**Skill**: Meaningful combinations of multiple MCP tool calls, encapsulated as independent Python scripts
-
-**Basic Tools**: Single MCP function calls (API-post-search, API-post-database-query, etc.)**Basic Tools**: Single MCP function calls (API-post-search, API-post-database-query, etc.)
-
-
-
-## I. Skills## Skills
-
-
-
-### 1. Remove Osaka Itinerary### Remove Osaka Itinerary
-
-
-
-**File**: `remove_osaka_itinerary.py`**Use Cases**:
-
-- Filter and remove travel itinerary items based on location, day, and time
-
-**Use Cases**:- Archive items in Osaka after 6 PM for Day 1 and Day 2
-
-- Filter and remove travel itinerary items by location, day, and time- Customize for different locations, days, and time thresholds
-
-- Archive Osaka items after 6 PM for Day 1 and Day 2
-
-- Customize filters for different locations and time thresholds**Usage**:
-
+**Usage:**
 ```bash
-
-**Prerequisites**:# Basic usage with environment variable
-
-- Japan Travel Planner page with Travel Itinerary databaseexport EVAL_NOTION_API_KEY="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"
-
-- Itinerary items have Day, Group (location), and Notes (time) propertiespython3 remove_osaka_itinerary.py
-
-
-
-**Usage**:# Or with custom parameters in code
-
-```bashpython3 -c "
-
-export EVAL_NOTION_API_KEY="ntn_..."import asyncio
-
-python3 remove_osaka_itinerary.pyfrom skills.japan_travel_planner.remove_osaka_itinerary import RemoveOsakaItinerary
-
+python3 remove_osaka_itinerary.py
 ```
 
-async def main():
+**Key Features:**
+- Searches and identifies the Travel Itinerary database
+- Filters items by location and day
+- Removes items based on time threshold
+- Uses 100% MCP tools for all operations
 
-**Typical Task Examples**:    skill = RemoveOsakaItinerary(
+---
 
-- Remove Osaka itinerary items after 6 PM on Day 1 and Day 2        api_key='ntn_...',
+### 2. Restaurant Expenses Sync (`restaurant_expenses_sync.py`)
 
-- Filter by Group property = "Osaka" and parse time from Notes field        location='Osaka',
+Synchronize restaurant expenses from the Itinerary database to the Expenses database.
 
-- Archive matching items for cleanup        days=['Day 1', 'Day 2'],
-
-        cutoff_time_minutes=18*60  # 6 PM
-
-### 2. Restaurant Expenses Sync    )
-
-    result = await skill.remove_itinerary()
-
-**File**: `restaurant_expenses_sync.py`    print(f'Removed: {result[\"removed_count\"]} items')
-
-
-
-**Use Cases**:asyncio.run(main())
-
-- Synchronize restaurants from travel itinerary to expense tracker"
-
-- Automatically create standardized expense entries```
-
-- Link restaurants to financial records
-
-- Maintain consistent formatting across entries**Expected Output**:
-
-```
-
-**Prerequisites**:======================================================================
-
-- Travel Itinerary database with Day 1 items tagged as "Food" type📊 Execution Summary
-
-- Expenses database with properties: Expense, Date, Transaction Amount, Category, Comment======================================================================
-
-Success: True
-
-**Usage**:Items removed: 4
-
+**Usage:**
 ```bash
-
-export EVAL_NOTION_API_KEY="ntn_..."Removed items:
-
-python3 restaurant_expenses_sync.py  - Rikuro's Namba Main Branch (7 PM on Day 1)
-
-```  - Ebisubashi Bridge (9 PM on Day 1)
-
-  - Shin Sekai "New World" (8 PM on Day 2)
-
-**Typical Task Examples**:  - Katsudon Chiyomatsu (7:30 PM on Day 2)
-
-- Create expense entries for all Day 1 restaurants```
-
-- Set uniform date (Jan 1, 2025) and cost ($120)
-
-- Populate comments from restaurant descriptions## Execution Flow
-
-- Categorize entries as "Dining"
-
-1. **Search Page**: Find "Japan Travel Planner" page via `API-post-search`
-
-## II. Basic Tools (utils.py)2. **Locate Database**: Find "Travel Itinerary" database via `API-get-block-children`
-
-3. **Query Database**: Query with filter (Location="Osaka" AND Day="Day 1"|"Day 2") via `API-post-database-query`
-
-Available MCP API methods:4. **Time Filter**: Parse time from "Notes" property, keep items where time > 6 PM
-
-5. **Archive Items**: Archive matched items via `API-patch-page` with `archived=true`
-
-| Tool | MCP API | Purpose |
-
-|------|---------|---------|## MCP Tools Used
-
-| `search()` | API-post-search | Find pages and databases |
-
-| `get_page()` | API-retrieve-a-page | Retrieve page details || Tool | Purpose |
-
-| `get_block_children()` | API-get-block-children | Get child blocks ||------|---------|
-
-| `query_database()` | API-post-database-query | Query with filters || `API-post-search` | Search for pages |
-
-| `patch_page()` | API-patch-page | Archive or update pages || `API-get-block-children` | Retrieve page structure |
-
-| `create_page()` | API-post-page | Create new pages || `API-post-database-query` | Query database with filters |
-
-| `API-patch-page` | Archive items |
-
-## Execution Flows
-
-## Customization
-
-### Remove Osaka Itinerary Flow:
-
-1. Search for Japan Travel Planner pageAdapt the skill for different scenarios:
-
-2. Get page children to find Travel Itinerary database
-
-3. Query database with filters (Group="Osaka", Day="Day 1"|"Day 2")```python
-
-4. Parse time from Notes property, filter time > 6 PM# Different location
-
-5. Archive matching items via API-patch-pageRemoveOsakaItinerary(location="Tokyo")
-
-
-
-### Restaurant Expenses Sync Flow:# Different days
-
-1. Search for Travel Itinerary databaseRemoveOsakaItinerary(days=["Day 3", "Day 4"])
-
-2. Search for Expenses database
-
-3. Query Travel Itinerary for Day 1 + Food type# Different time threshold
-
-4. Retrieve full page details for each restaurantRemoveOsakaItinerary(cutoff_time_minutes=15*60)  # 3 PM
-
-5. Create expense entries in Expenses database with standardized properties
-
-# All combined
-RemoveOsakaItinerary(
-    location="Kyoto",
-    days=["Day 2"],
-    cutoff_time_minutes=20*60  # 8 PM
-)
+python3 restaurant_expenses_sync.py
 ```
 
-## File Structure
+**Key Features:**
+- Extracts restaurant entries from the Travel Itinerary database
+- Creates corresponding expense records
+- Handles amount, date, and category mapping
+- Uses 100% MCP tools for all operations
 
-```
-skills/japan_travel_planner/
-├── remove_osaka_itinerary.py    # Main skill implementation
-├── utils.py                     # MCP tools wrapper
-├── SKILL.md                     # This documentation
-└── __init__.py                  # Package initialization
+---
+
+### 3. Packing Progress Summary (`packing_progress_summary.py`)
+
+Manage packing list status and create a progress summary in the Japan Travel Planner page.
+
+**Step 1: Update Packing Items**
+- Marks specific items as packed in the Packing List database:
+  - Hat (in Clothes category)
+  - SIM Card (in Essentials)
+  - Wallet (in Essentials)
+
+**Step 2: Create Progress Summary**
+- Searches for the Packing List database and Japan Travel Planner page
+- Queries all items in the database to collect statistics
+- Creates a new section in the main planning page after "Packing List 💼" heading
+- Displays packing progress in the format: "Category: X/Y packed"
+
+**Usage:**
+```bash
+python3 packing_progress_summary.py
 ```
 
+**Input Requirements:**
+- Notion API key must be set in `EVAL_NOTION_API_KEY` environment variable
+- Packing List database must exist with the following structure:
+  - Name (title property)
+  - Type (multi_select: Clothes, Electronics, Essentials, Miscellaneous, Shoes, Toiletries)
+  - Packed (checkbox)
+  - Quantity (number)
+  - Notes (rich_text)
+
+**Output:**
+The skill creates the following structure in Japan Travel Planner page:
+```
+**Packing Progress Summary**
+• Clothes: X/Y packed
+• Electronics: X/Y packed
+• Essentials: X/Y packed
+• Miscellaneous: X/Y packed
+• Shoes: X/Y packed
+• Toiletries: X/Y packed
+```
+
+**Key Features:**
+- Queries Packing List database for all items
+- Groups items by category (Type property)
+- Counts packed vs total items per category
+- Creates both summary block and updates item statuses
+- Uses 100% MCP tools for all operations
+
+---
+
+## MCP Tools Used
+
+All skills use the `NotionMCPTools` wrapper class which provides:
+
+### Database & Page Operations
+- `search()`: Search for pages and databases
+- `query_database()`: Query database with filters
+- `get_page()`: Retrieve page details
+- `create_page()`: Create new page in database
+- `patch_page()`: Archive or update page
+
+### Block Operations
+- `get_block_children()`: Get all child blocks
+- `append_block_children()`: Add new blocks
+- `update_block()`: Modify block content
+- `update_page_property()`: Update page properties
+
+### Helper Functions
+- `parse_time_to_minutes()`: Convert time strings to minutes
+- `extract_page_property()`: Extract specific properties from pages
+
+---
+
+## Environment Setup
+
+Ensure the following environment variable is set:
+```bash
+export EVAL_NOTION_API_KEY="your-notion-api-key"
+```
+
+Or create a `.mcp_env` file in the project root:
+```
+EVAL_NOTION_API_KEY=your-notion-api-key
+```
+
+---
+
+## Common Patterns
+
+### Searching for Resources
+```python
+async with NotionMCPTools(api_key) as mcp:
+    result = await mcp.search("Packing List")
+    data = json.loads(result)
+    database = next((item for item in data["results"] if item["object"] == "database"), None)
+```
+
+### Querying Databases
+```python
+query_result = await mcp.query_database(database_id)
+items = json.loads(query_result).get("results", [])
+```
+
+### Creating Summary Blocks
+```python
+blocks = [
+    {
+        "object": "block",
+        "type": "paragraph",
+        "paragraph": {
+            "rich_text": [{"type": "text", "text": {"content": "Summary"}}]
+        }
+    }
+]
+await mcp.append_block_children(page_id, blocks)
+```
+
+---
+
+## Notes
+
+- All skills use asynchronous operations (`async`/`await`)
+- Error handling includes logging and result dictionaries
+- Environment variables are loaded from multiple locations (`.mcp_env`, `.env`, etc.)
+- Results follow a consistent format with `success`, `errors`, and relevant statistics
