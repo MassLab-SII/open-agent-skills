@@ -111,6 +111,31 @@ class NotionMCPTools:
             print(f"❌ Patch page error: {e}")
             return None
     
+    async def patch_block_children(self, block_id: str, children: List[Dict[str, Any]]) -> Optional[str]:
+        """Add children blocks to a block using patch."""
+        try:
+            args = {
+                "block_id": block_id,
+                "children": children
+            }
+            result = await self.client.call_tool("API-patch-block-children", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Patch block children error: {e}")
+            return None
+    
+    async def search_database(self, query: str) -> Optional[str]:
+        """Search for databases in Notion."""
+        try:
+            result = await self.client.call_tool("API-post-search", {
+                "query": query,
+                "filter": {"property": "object", "value": "database"}
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Search database error: {e}")
+            return None
+    
     @staticmethod
     def _extract_text(result) -> Optional[str]:
         """Extract text content from MCP result."""
@@ -146,3 +171,44 @@ def extract_property_value(properties: Dict[str, Any], property_name: str) -> Op
         return None
     except Exception:
         return None
+
+
+def extract_number_value(properties: Dict[str, Any], property_name: str) -> Optional[float]:
+    """Extract a number value from Notion properties."""
+    try:
+        prop = properties.get(property_name, {})
+        if prop.get("type") == "number":
+            return prop.get("number")
+        elif prop.get("type") == "rollup":
+            rollup_data = prop.get("rollup", {})
+            if isinstance(rollup_data, dict):
+                return rollup_data.get("number")
+        return None
+    except Exception:
+        return None
+
+
+def extract_date_value(properties: Dict[str, Any], property_name: str) -> Optional[str]:
+    """Extract a date value from Notion properties."""
+    try:
+        prop = properties.get(property_name, {})
+        if prop.get("type") == "date":
+            date_data = prop.get("date", {})
+            if isinstance(date_data, dict):
+                return date_data.get("start")
+        return None
+    except Exception:
+        return None
+
+
+def get_page_title(page: Dict[str, Any]) -> str:
+    """Extract title from a Notion page object."""
+    try:
+        properties = page.get("properties", {})
+        title_prop = properties.get("title", {})
+        title_array = title_prop.get("title", [])
+        if title_array:
+            return title_array[0].get("plain_text", "")
+    except Exception:
+        pass
+    return ""
