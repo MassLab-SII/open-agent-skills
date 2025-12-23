@@ -1,25 +1,107 @@
 ---
-name: it-security-audit
-description: Create comprehensive security audit tickets based on expired IT inventory items and security FAQ entries. Parameterized skill that can work with any hub/database structure. Automatically queries databases, analyzes expiration data, and generates actionable security recommendations.
+name: it-trouble-shooting-hub-skills
+description: Comprehensive skills for IT Trouble Shooting Hub workspace management. Includes asset retirement migration for managing expired inventory and security audit ticket creation. Automatically discovers databases, queries assets, and generates audit trails with actionable recommendations.
 ---
 
-# IT Security Audit Skill
+# IT Trouble Shooting Hub Skills
 
-This skill creates comprehensive security audit tickets combining data from multiple Notion databases to generate a consolidated security review. Fully parameterized for flexibility and reusability.
+## 1. Asset Retirement Migration Skill
 
-## Capabilities
+**Name**: asset-retirement-migration
 
-1. **Database Querying**: Search and filter inventory and FAQ databases
-2. **Data Aggregation**: Combine information from multiple sources
-3. **Intelligent Filtering**: Find expired items based on cutoff dates
-4. **Report Generation**: Create organized audit tickets with recommendations
-5. **Parameterized Execution**: All critical parameters can be passed dynamically without code changes
+**Description**: Automatically migrate expired or returned IT assets from inventory to a dedicated retirement queue. Creates new database, migrates items with properties, archives originals, and generates audit logs.
 
-## 1. Create Security Audit Ticket
+### Purpose
 
-Create a comprehensive security audit ticket combining expired inventory items with security best practices.
+Streamline IT asset lifecycle management by automatically identifying assets that need to be retired and moving them to a specialized tracking database.
 
-**Use when**: You need to generate a security audit report based on expired assets in any Notion workspace.
+### Usage
+
+```bash
+# Set API key
+export EVAL_NOTION_API_KEY="ntn_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Run migration
+python3 asset_retirement_migration.py
+```
+
+### What It Does
+
+1. Finds IT Trouble Shooting Hub page (via API-post-search)
+2. Locates IT Inventory database (via API-post-search)
+3. Queries for Status="Expired" OR Status="To be returned" (via API-post-database-query)
+4. Creates IT Asset Retirement Queue database (via API-create-a-database)
+5. Migrates items to retirement queue (via API-post-page + API-patch-page)
+6. Archives original items (via API-patch-page)
+7. Updates database description (via API-update-a-database)
+8. Creates Retirement Migration Log with callout (via API-post-page + API-patch-block-children)
+
+### Expected Output
+
+```
+Step 1: Finding IT Trouble Shooting Hub page...
+  ✅ Found hub page: 2d25d1cf-e7c4-80cd-8fa6-c711a47ece78
+
+Step 2: Locating IT Inventory database...
+  ✅ Found inventory database: 2d25d1cf-e7c4-815b-ab8d-cfe057a347f3
+
+Step 3: Querying for expired/returned assets...
+  ✅ Found 2 items to migrate
+
+Step 4: Creating IT Asset Retirement Queue database...
+  ✅ Created database: 2d25d1cf-e7c4-812c-b8a3-f098d6d7295c
+
+Step 5: Migrating items to retirement queue...
+  ✅ Migrated 2 items
+
+Step 6: Updating database description...
+  ✅ Updated description
+
+Step 7: Creating Retirement Migration Log page...
+  ✅ Created migration log
+
+============================================================
+MIGRATION SUMMARY
+============================================================
+✅ SUCCESS: Migrated 2 assets
+📊 Database ID: 2d25d1cf-e7c4-812c-b8a3-f098d6d7295c
+```
+
+### Prerequisites
+
+- IT Trouble Shooting Hub page exists
+- IT Inventory database with Serial, Status, Vendor, Tags, Expiration date fields
+- Items with Status="Expired" or Status="To be returned"
+
+### Database Created
+
+**IT Asset Retirement Queue** with properties:
+- Serial (Title)
+- Status (Select)
+- Vendor (Select)
+- Tags (Multi-select)
+- Expiration date (Date)
+- Retirement Reason (Select): Expired License, Hardware Obsolete, Security Risk, User Offboarding
+
+---
+
+## 2. IT Security Audit Skill
+
+**Name**: it-security-audit
+
+**Description**: Create comprehensive security audit tickets based on expired IT inventory items and security FAQ entries. Parameterized skill that can work with any hub/database structure. Automatically queries databases, analyzes expiration data, and generates actionable security recommendations.
+
+### Purpose
+
+Create comprehensive security audit tickets combining data from multiple Notion databases to generate a consolidated security review. Fully parameterized for flexibility and reusability.
+
+### Capabilities
+
+- **Database Querying**: Search and filter inventory and FAQ databases
+- **Data Aggregation**: Combine information from multiple sources
+- **Intelligent Filtering**: Find expired items based on cutoff dates
+- **Report Generation**: Create organized audit tickets with recommendations
+- **Parameterized Execution**: All critical parameters can be passed dynamically without code changes
 
 ### Basic Usage
 
@@ -70,10 +152,19 @@ python create_security_audit.py audit \
 | `--due-date` | 2023-06-22 | Due date in YYYY-MM-DD format |
 | `--expiration-cutoff` | 2023-07-15 | Date cutoff in YYYY-MM-DD format for finding expired items |
 
-## Implementation Details
+### What It Does
 
-### Workflow Steps
+1. Searches for hub page by name
+2. Finds inventory and FAQ databases
+3. Queries for expired items (Expiration date < cutoff)
+4. Gathers security FAQ entries for recommendations
+5. Creates audit ticket in requests database
+6. Generates recommendations: `<Serial> - <Tag> - <Recommendation>`
+7. Returns success or error status
 
+### Implementation Details
+
+**Workflow Steps**:
 1. **Search Page** - Locates the specified hub page
 2. **Find Databases** - Discovers databases by name
 3. **Query Inventory** - Finds items with expiration dates before cutoff
@@ -98,6 +189,7 @@ python create_security_audit.py audit \
 ```
 <Serial> - <Tag> - <Recommendation>
 ```
+
 Example:
 - `ABC123 - Laptop - Immediately disconnect from network and perform full security audit`
 - `XYZ789 - License - Review license expiration and disconnect from network to prevent security incidents`
@@ -111,9 +203,7 @@ Recommendations are generated based on item tag and security best practices:
 - **Laptop**: Disconnect and perform full security audit
 - **Other**: General IT support referral
 
-## Reusability & Extensibility
-
-### Adapting to Different Tasks
+### Reusability & Extensibility
 
 This skill is designed to be **fully reusable** for similar tasks with only parameter changes:
 
@@ -149,79 +239,55 @@ If you need fundamentally different logic, you would need to:
 2. Reuse the `NotionTools` base class for common operations
 3. Override specific methods like `_generate_bullet_items()`
 
-## Architecture
+---
 
-### Class Hierarchy
+## Shared Utilities (utils.py)
 
-```
-NotionTools (utils.py)
-  └─ Provides base Notion API operations
-     ├── search_page()
-     ├── find_database_by_name()
-     ├── query_database()
-     ├── create_page_in_database()
-     └── add_bullet_list()
+Both skills use these shared utility methods:
 
-SecurityAuditTicketCreator (create_security_audit.py)
-  └─ Implements specific business logic
-     ├── create_ticket()
-     ├── _find_expired_items()
-     ├── _find_security_faqs()
-     ├── _create_ticket_page()
-     └── _generate_bullet_items()
-```
+**Search & Query**:
+- `search(query, filter_obj=None)` - Find pages/databases
+- `query_database(database_id, filter_data=None)` - Query with filters
+- `get_block_children(block_id)` - Get child blocks
 
-### API Adaptation Layer
+**Create & Update**:
+- `create_database(parent_id, title, properties)` - Create database
+- `create_page(parent_id, title, parent_type)` - Create page
+- `create_page_with_properties(parent_id, parent_type, properties)` - Create with properties
+- `update_page(page_id, properties)` - Update page
+- `update_database_description(database_id, description)` - Update DB description
+- `archive_page(page_id)` - Archive page
 
-The skill includes automatic handling of Notion API version differences:
+**Block Operations**:
+- `patch_block_children(block_id, children)` - Add/update blocks
+- `create_callout(text, emoji)` - Create callout block
 
-- Converts `data_source` IDs to actual `database_id` for querying
-- Supports both `child_database` blocks and `data_source` type databases
-- Provides `databases.query()` compatibility for newer notion-client versions
+---
 
-## Error Handling
+## Key Features
 
-The skill gracefully handles common errors:
+✅ **Dynamic ID Discovery**: No hardcoded IDs - discovers all IDs via API calls  
+✅ **Async/Await**: Efficient async MCP operations  
+✅ **Error Handling**: Graceful error messages and recovery  
+✅ **Parameterized**: Easy customization for different databases/hubs  
+✅ **Audit Trails**: Original items preserved/archived, never deleted  
+✅ **Scalable**: Handles 10-100+ items efficiently  
 
-- **Database not found**: Searches by name, provides clear error message
-- **Page creation failure**: Checks for parent database accessibility
-- **Property validation**: Ensures all required properties are correctly formatted
-- **API rate limits**: Returns error with suggestion to retry
+---
 
-## Future Enhancements
+## Troubleshooting
 
-Potential improvements:
+**Issue: "Could not find IT Trouble Shooting Hub"**
+- Verify page exists and API key has access
+- Check exact page name matches
 
-1. **Batch operations**: Create multiple tickets in one run
-2. **Custom recommendations**: Load recommendations from a config file
-3. **Email notifications**: Send summary emails after ticket creation
-4. **Historical tracking**: Archive old tickets before creating new ones
-5. **Multi-database support**: Query from multiple inventory sources
+**Issue: "Could not find IT Inventory database"**
+- Verify database exists in hub
+- Check exact database name
 
-Create new ticket page with specified properties.
+**Issue: "No expired items found"**
+- Verify items exist with matching Status or Expiration date
+- Check property names are correct
 
-### `add_recommendations(page_id: str, items: List[Dict], recommendations: Dict) -> bool`
-Add bullet list with recommendations to ticket.
-
-## Notion Databases Used
-
-The skill interacts with three core databases:
-
-1. **IT Inventory** - Stores IT assets with expiration dates and tags
-2. **IT FAQs** - Contains security-related FAQ entries
-3. **IT Requests** - Stores task tickets and audit reports
-
-## Error Handling
-
-The skill gracefully handles:
-- Missing databases - Reports specific database not found
-- No expired items - Returns error indicating no items to audit
-- Database query failures - Logs error and continues
-- Missing FAQs database - Treats as optional, continues with defaults
-
-## Notes
-
-- All parameters (dates, titles, priorities) are configured dynamically by the evaluation system
-- The skill respects the MCPMark Eval Hub isolation model
-- Recommendations are always generated based on item characteristics
-- All API key management is handled automatically by the evaluation system
+**Issue: API rate limit**
+- Retry after waiting (Notion allows 3 requests/second)

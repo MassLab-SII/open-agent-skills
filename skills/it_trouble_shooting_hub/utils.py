@@ -60,20 +60,23 @@ class NotionMCPTools:
     
     # ==================== Core MCP Tools ====================
     
-    async def search(self, query: str) -> Optional[str]:
+    async def search(self, query: str, filter_obj: Optional[Dict] = None) -> Optional[str]:
         """
         Search pages and databases in Notion
         
         Args:
             query: Search query string
+            filter_obj: Optional filter configuration
             
         Returns:
             Raw MCP result as JSON string or None on error
         """
         try:
-            result = await self.session.call_tool("API-post-search", {
-                "query": query
-            })
+            args = {"query": query}
+            if filter_obj:
+                args["filter"] = filter_obj
+            
+            result = await self.session.call_tool("API-post-search", args)
             return self._extract_text(result)
         except Exception as e:
             print(f"❌ Search error: {e}")
@@ -148,20 +151,21 @@ class NotionMCPTools:
             print(f"❌ Patch block children error: {e}")
             return None
     
-    async def create_page(self, parent_id: str, title: str) -> Optional[str]:
+    async def create_page(self, parent_id: str, title: str, parent_type: str = "database_id") -> Optional[str]:
         """
         Create a new page
         
         Args:
             parent_id: Parent page/database ID
             title: Page title
+            parent_type: "page_id" or "database_id" (default: database_id)
             
         Returns:
             Raw MCP result as JSON string or None on error
         """
         try:
             result = await self.session.call_tool("API-post-page", {
-                "parent": {"page_id": parent_id},
+                "parent": {parent_type: parent_id},
                 "properties": {
                     "title": {
                         "title": [{"type": "text", "text": {"content": title}}]
@@ -171,6 +175,29 @@ class NotionMCPTools:
             return self._extract_text(result)
         except Exception as e:
             print(f"❌ Create page error: {e}")
+            return None
+    
+    async def create_page_with_properties(self, parent_id: str, parent_type: str, properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Create a new page with custom properties
+        
+        Args:
+            parent_id: Parent page/database ID
+            parent_type: "page_id" or "database_id"
+            properties: Page properties
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            parent = {parent_type: parent_id}
+            result = await self.session.call_tool("API-post-page", {
+                "parent": parent,
+                "properties": properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create page with properties error: {e}")
             return None
     
     # ==================== Helper Methods ====================
@@ -279,3 +306,135 @@ class NotionMCPTools:
                 "icon": {"type": "emoji", "emoji": emoji}
             }
         }
+    
+    async def create_database(self, parent_id: str, title: str, 
+                            properties: Dict[str, Dict]) -> Optional[str]:
+        """
+        Create a new database
+        
+        Args:
+            parent_id: Parent page ID
+            title: Database title
+            properties: Database properties configuration
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-create-a-database", {
+                "parent": {"type": "page_id", "page_id": parent_id},
+                "title": [{"text": {"content": title}}],
+                "properties": properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create database error: {e}")
+            return None
+    
+    async def update_database(self, database_id: str, 
+                             properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Update database properties or description
+        
+        Args:
+            database_id: Database ID
+            properties: Properties to update
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-patch-database", {
+                "database_id": database_id,
+                **properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update database error: {e}")
+            return None
+    
+    async def create_database_item(self, database_id: str, 
+                                  properties: Dict[str, Dict]) -> Optional[str]:
+        """
+        Create a new page in a database
+        
+        Args:
+            database_id: Database ID
+            properties: Page properties
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-post-page", {
+                "parent": {"database_id": database_id},
+                "properties": properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create database item error: {e}")
+            return None
+    
+    
+    async def update_page(self, page_id: str, properties: Dict[str, Any]) -> Optional[str]:
+        """
+        Update page properties
+        
+        Args:
+            page_id: Page ID
+            properties: Properties to update
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-patch-page", {
+                "page_id": page_id,
+                "properties": properties
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update page error: {e}")
+            return None
+    
+    async def archive_page(self, page_id: str) -> Optional[str]:
+        """
+        Archive a page
+        
+        Args:
+            page_id: Page ID to archive
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-patch-page", {
+                "page_id": page_id,
+                "archived": True
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Archive page error: {e}")
+            return None
+    
+    async def update_database_description(self, database_id: str, description: str) -> Optional[str]:
+        """
+        Update database description
+        
+        Args:
+            database_id: Database ID
+            description: New description text
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            result = await self.session.call_tool("API-update-a-database", {
+                "database_id": database_id,
+                "description": [{"text": {"content": description}}]
+            })
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Update database description error: {e}")
+            return None
+
