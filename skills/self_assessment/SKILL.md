@@ -16,7 +16,7 @@ In Notion automation, we distinguish two types of operations:
 
 ## Skills
 
-### FAQ Column Layout
+### 1. FAQ Column Layout
 
 **Use Cases**:
 - Reorganize FAQ content into visual two-column layout
@@ -92,11 +92,106 @@ if result["success"]:
     print(f"Moved {result['qa_pairs_moved']} Q&A pairs")
 ```
 
+---
+
+### 2. Numbered List Emojis
+
+**Use Cases**:
+- Replace plain numbered lists with emoji numbers for visual formatting
+- Improve visual distinction of list items
+- Convert multiple numbered list formats across the page
+- Enhance readability of sequential items
+
+**Prerequisites**:
+- Self Assessment page must exist in Notion
+- Numbered list items (1., 2., 3., etc.) must be present
+- Environment variable `EVAL_NOTION_API_KEY` must be set
+
+**Usage**:
+```bash
+# Basic usage with environment variable
+export EVAL_NOTION_API_KEY="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"
+python3 skills/self_assessment/numbered_list_emojis.py
+```
+
+**What It Does**:
+1. Finds the Self Assessment page
+2. Retrieves all blocks recursively from the page
+3. Identifies all numbered_list_item blocks
+4. For each numbered item (1., 2., 3., etc.):
+   - Extracts the number
+   - Replaces it with corresponding emoji (1️⃣, 2️⃣, 3️⃣, etc.)
+   - Updates the block with API-patch-block
+5. Reports total items found and updated
+
+**Example Transformation**:
+```
+Before:  1. Record Each Hyperfocus Session:
+After:   1️⃣ Record Each Hyperfocus Session:
+
+Before:  2. Review and Reflect:
+After:   2️⃣ Review and Reflect:
+
+Before:  3. Adjust and Optimize:
+After:   3️⃣ Adjust and Optimize:
+```
+
+**Emoji Mapping**:
+- 1 → 1️⃣, 2 → 2️⃣, 3 → 3️⃣, 4 → 4️⃣, 5 → 5️⃣
+- 6 → 6️⃣, 7 → 7️⃣, 8 → 8️⃣, 9 → 9️⃣, 10 → 🔟
+
+**Output Example**:
+```
+======================================================================
+RESULT SUMMARY
+======================================================================
+Success: True
+Self Assessment Page ID: 2552b7e8-cebd-804e-b8ce-c61bddd75364
+Numbered List Items Found: 13
+Blocks Updated: 13
+```
+
+## MCP Tools Used
+
+### FAQ Column Layout
+| Tool | Purpose |
+|------|---------|
+| `API-post-search` | Search for Self Assessment page |
+| `API-get-block-children` | Retrieve page and block structure |
+| `API-patch-block-children` | Create columns and add Q&A content |
+| `API-delete-a-block` | Remove old Q&A blocks |
+
+### Numbered List Emojis
+| Tool | Purpose |
+|------|---------|
+| `API-post-search` | Search for Self Assessment page |
+| `API-get-block-children` | Recursively retrieve all blocks |
+| `API-patch-block` | Update numbered list items with emoji numbers |
+
+## Customization
+
+Adapt the skills for different scenarios:
+
+```python
+# FAQ Column Layout - Use custom API key
+skill = FAQColumnLayout(api_key="custom_key")
+result = await skill.reorganize_faq()
+
+# Numbered List Emojis - Use custom API key
+skill = NumberedListEmojis(api_key="custom_key")
+result = await skill.process_page()
+
+# Access result details
+if result["success"]:
+    print(f"Blocks updated: {result['blocks_updated']}")
+```
+
 ## File Structure
 
 ```
 skills/self_assessment/
 ├── faq_column_layout.py     # Main skill implementation
+├── numbered_list_emojis.py  # Emoji numbers skill implementation
 ├── utils.py                 # MCP tools wrapper
 ├── SKILL.md                 # This documentation
 └── __init__.py              # Package initialization

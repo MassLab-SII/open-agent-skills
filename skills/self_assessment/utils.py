@@ -108,6 +108,32 @@ class NotionMCPTools:
             print(f"❌ Delete block error: {e}")
             return {}
     
+    async def patch_block(self, block_id: str, block_update: Dict[str, Any]) -> Dict[str, Any]:
+        """Patch a block using API-patch-block."""
+        try:
+            args = {"block_id": block_id}
+            args.update(block_update)
+            result = await self.client.call_tool("API-patch-block", args)
+            text_result = self._extract_text(result)
+            if text_result:
+                return json.loads(text_result)
+            return {}
+        except Exception as e:
+            print(f"❌ Patch block error: {e}")
+            return {}
+    
+    async def call_tool_direct(self, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Call any MCP tool directly with given arguments."""
+        try:
+            result = await self.client.call_tool(tool_name, args)
+            text_result = self._extract_text(result)
+            if text_result:
+                return json.loads(text_result)
+            return {}
+        except Exception as e:
+            print(f"❌ Tool call error ({tool_name}): {e}")
+            return {}
+    
     @staticmethod
     def _extract_text(result: Any) -> Optional[str]:
         """Extract text content from MCP result."""
