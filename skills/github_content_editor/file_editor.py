@@ -15,9 +15,24 @@ Commands:
     file_edit       Search and replace across multiple files
     batch           Push multiple files in a single commit
 
+Content Input Methods (for edit and batch commands):
+    --content       Direct content string (may have shell escaping issues with quotes)
+    --content-base64  Base64 encoded content (recommended for code with special chars)
+    --content-file    Read content from a local file
+    --stdin           Read content from stdin (for piping)
+
 Examples:
     # Edit/Overwrite a configuration file
     python file_editor.py edit mcpmark-source build-your-own-x --path "src/config.py" --content "DEBUG = False" --message "Disable debug mode"
+
+    # Edit with base64 encoded content (recommended for code)
+    python file_editor.py edit owner repo --path "src/app.js" --content-base64 "Y29uc3QgbXNnID0gJ2hlbGxvJzs=" --message "Add app.js"
+
+    # Edit by reading from local file
+    python file_editor.py edit owner repo --path "src/app.js" --content-file "./local_app.js" --message "Add app.js"
+
+    # Edit by piping content
+    echo "const x = 1;" | python file_editor.py edit owner repo --path "src/x.js" --stdin --message "Add x.js"
 
     # Apply a specific fix (search and replace)
     python file_editor.py apply_fix mcpmark-source build-your-own-x --path "src/buggy.py" --pattern "if x = y:" --replacement "if x == y:" --message "Fix syntax error"
@@ -27,6 +42,9 @@ Examples:
 
     # Batch push multiple files in a single commit
     python file_editor.py batch mcpmark-source build-your-own-x --files '[{"path": ".github/workflows/lint.yml", "content": "..."}, {"path": "eslint.config.js", "content": "..."}]' --message "Add linting workflow and config"
+
+    # Batch push with base64 encoded files (recommended)
+    python file_editor.py batch owner repo --files-base64 "W3sicGF0aCI6ICJzcmMvYXBwLmpzIiwgImNvbnRlbnQiOiAiY29uc3QgeCA9IDE7In1d" --message "Add files"
 """
 
 import argparse
@@ -34,6 +52,7 @@ import asyncio
 import sys
 import os
 import traceback
+import base64
 
 # Add skills directory to path to allow importing from utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -407,7 +426,12 @@ Examples:
     edit_parser.add_argument("owner", help="Repository owner")
     edit_parser.add_argument("repo", help="Repository name")
     edit_parser.add_argument("--path", required=True, help="Path to the file")
-    edit_parser.add_argument("--content", required=True, help="New content of the file")
+    # Content input options (mutually exclusive)
+    content_group = edit_parser.add_mutually_exclusive_group(required=True)
+    content_group.add_argument("--content", help="New content of the file (direct string)")
+    content_group.add_argument("--content-base64", help="Base64 encoded content (recommended for code)")
+    content_group.add_argument("--content-file", help="Read content from local file")
+    content_group.add_argument("--stdin", action="store_true", help="Read content from stdin")
     edit_parser.add_argument("--message", required=True, help="Commit message")
     edit_parser.add_argument("--branch", default="main", help="Target branch")
 
@@ -434,7 +458,11 @@ Examples:
     batch_parser = subparsers.add_parser("batch", help="Push multiple files in a single commit")
     batch_parser.add_argument("owner", help="Repository owner")
     batch_parser.add_argument("repo", help="Repository name")
-    batch_parser.add_argument("--files", required=True, help='JSON array of files: [{"path": "...", "content": "..."}]')
+    # Files input options (mutually exclusive)
+    files_group = batch_parser.add_mutually_exclusive_group(required=True)
+    files_group.add_argument("--files", help='JSON array of files: [{"path": "...", "content": "..."}]')
+    files_group.add_argument("--files-base64", help="Base64 encoded JSON array of files (recommended)")
+    files_group.add_argument("--files-file", help="Read files JSON from local file")
     batch_parser.add_argument("--message", required=True, help="Commit message")
     batch_parser.add_argument("--branch", default="main", help="Target branch")
 
@@ -443,10 +471,33 @@ Examples:
 
     try:
         if args.command == "edit":
+            # Resolve content from various input methods
+            content = None
+            if args.content:
+                content = args.content
+            elif args.content_base64:
+                try:
+                    content = base64.b64decode(args.content_base64).decode('utf-8')
+                except Exception as e:
+                    print(f"Error: Failed to decode base64 content: {e}")
+                    sys.exit(1)
+            elif args.content_file:
+                try:
+                    with open(args.content_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except Exception as e:
+                    print(f"Error: Failed to read content file: {e}")
+                    sys.exit(1)
+            elif args.stdin:
+                content = sys.stdin.read()
+            
+            if content is None:
+                print("Error: No content provided")
+                sys.exit(1)
+            
             success = await editor.edit_file(
-                args.owner, args.repo, args.path, args.content, args.message, args.branch
+                args.owner, args.repo, args.path, content, args.message, args.branch
             )
-            # Do not exit here, let main handling finish or use return
             if not success: sys.exit(1)
             
         elif args.command == "apply_fix":
@@ -463,13 +514,36 @@ Examples:
             
         elif args.command == "batch":
             import json
+            files_json = None
+            
+            # Resolve files from various input methods
+            if args.files:
+                files_json = args.files
+            elif args.files_base64:
+                try:
+                    files_json = base64.b64decode(args.files_base64).decode('utf-8')
+                except Exception as e:
+                    print(f"Error: Failed to decode base64 files: {e}")
+                    sys.exit(1)
+            elif args.files_file:
+                try:
+                    with open(args.files_file, 'r', encoding='utf-8') as f:
+                        files_json = f.read()
+                except Exception as e:
+                    print(f"Error: Failed to read files file: {e}")
+                    sys.exit(1)
+            
+            if files_json is None:
+                print("Error: No files provided")
+                sys.exit(1)
+            
             try:
-                files = json.loads(args.files)
+                files = json.loads(files_json)
                 if not isinstance(files, list):
-                    print("Error: --files must be a JSON array")
+                    print("Error: files must be a JSON array")
                     sys.exit(1)
             except json.JSONDecodeError as e:
-                print(f"Error: Invalid JSON in --files: {e}")
+                print(f"Error: Invalid JSON in files: {e}")
                 sys.exit(1)
             
             success = await editor.batch_push(

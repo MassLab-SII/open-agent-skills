@@ -152,14 +152,23 @@ class LabelManager:
             # Merge with new labels
             all_labels = list(set(existing_label_names + labels))
             
-            # Update PR with merged labels
-            result = await gh.update_pull_request(
+            # Get PR title (required for issue_write)
+            pr_title = pr_data.get("title", "")
+            if not pr_title:
+                print(f"Warning: PR #{pr_number} has no title")
+                pr_title = f"PR #{pr_number}"  # Fallback title
+            
+            # Update PR with merged labels using issue_write
+            # Note: GitHub treats PRs as Issues for label operations
+            result = await gh.issue_write(
                 owner=self.owner,
                 repo=self.repo,
-                pull_number=pr_number,
-                labels=all_labels
+                title=pr_title,  # Must provide current title to avoid overwriting
+                issue_number=pr_number,  # PR number is the same as issue number
+                labels=all_labels,  # Use merged labels, not just new labels
+                method="update"
             )
-            
+        
             success = self._check_success(result)
             
             if success:
