@@ -195,6 +195,40 @@ class NotionMCPTools:
         except Exception as e:
             print(f"❌ Create page error: {e}")
             return None
+
+    async def create_child_page(self, parent_page_id: str, title: str) -> Optional[str]:
+        """
+        Create a new child page under an existing page
+        
+        Args:
+            parent_page_id: Parent page ID
+            title: Title of the new child page
+            
+        Returns:
+            Raw MCP result as JSON string or None on error
+        """
+        try:
+            args = {
+                "parent": {
+                    "page_id": parent_page_id
+                },
+                "properties": {
+                    "title": {
+                        "title": [
+                            {
+                                "type": "text",
+                                "text": {"content": title}
+                            }
+                        ]
+                    }
+                }
+            }
+            
+            result = await self.session.call_tool("API-post-page", args)
+            return self._extract_text(result)
+        except Exception as e:
+            print(f"❌ Create child page error: {e}")
+            return None
     
     async def update_page_property(self, page_id: str, properties: Dict[str, Any]) -> Optional[str]:
         """

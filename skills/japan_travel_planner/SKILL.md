@@ -92,6 +92,67 @@ The skill creates the following structure in Japan Travel Planner page:
 
 ---
 
+### 4. Daily Itinerary Overview (`daily_itinerary_overview.py`)
+
+Create a comprehensive daily itinerary overview page organizing all activities by day with visited status.
+
+**Usage:**
+```bash
+EVAL_NOTION_API_KEY="your-key" python3 daily_itinerary_overview.py
+```
+
+**Input Requirements:**
+- Notion API key must be set in `EVAL_NOTION_API_KEY` environment variable
+- Travel Itinerary database must exist with the following structure:
+  - Name (title property)
+  - Day (select: Day 1, Day 2, Day 3, etc.)
+  - Group (select: Tokyo, Osaka, Kyoto, etc.)
+  - Visited (checkbox)
+  - Type (multi_select: Attractions, Shopping, Food)
+
+**Step-by-Step Process:**
+
+1. **Search for Main Page**: Locates the "Japan Travel Planner" page
+2. **Search for Database**: Finds the "Travel Itinerary" database
+3. **Query All Activities**: Retrieves all 73+ activities from the database
+4. **Parse by Day**: Organizes activities by day (Day 1, Day 2, Day 3) and counts visited items
+5. **Create Child Page**: Creates "Daily Itinerary Overview" as a child of Japan Travel Planner
+6. **Build Blocks**: Constructs 35+ blocks with proper structure:
+   - `heading_1`: "📅 Daily Itinerary Overview"
+   - `heading_2`: "📊 Trip Summary"
+   - `paragraph`: "Total activities visited (from Day 1 to Day 3): [COUNT]"
+   - `heading_2`: "🌅 Day 1", "🌆 Day 2", "🌃 Day 3"
+   - `to_do` items for each activity with checked status matching visited status
+7. **Add Blocks**: Uses `API-patch-block-children` to add all blocks to the page
+
+**Output Structure:**
+```
+Daily Itinerary Overview (child page)
+├── 📅 Daily Itinerary Overview (heading_1)
+├── 📊 Trip Summary (heading_2)
+├── Total activities visited (from Day 1 to Day 3): 8 (paragraph)
+├── 🌅 Day 1 (heading_2)
+│   ├── [✓] Osaka Castle - Osaka (to_do)
+│   ├── [✓] Unagi Kushiyaki Idumo - Osaka (to_do)
+│   └── [ ] Other activities... (to_do)
+├── 🌆 Day 2 (heading_2)
+│   ├── [✓] Studio Ghibli Store - Osaka (to_do)
+│   └── [ ] Other activities... (to_do)
+└── 🌃 Day 3 (heading_2)
+    ├── [✓] Tokyo Tower - Tokyo (to_do)
+    └── [ ] Other activities... (to_do)
+```
+
+**Key Features:**
+- Organizes 29 activities across Day 1-3
+- Automatically counts visited items (8 in this case)
+- Matches to-do checked status with database visited status
+- Displays city/group name for each activity
+- Uses emoji-based day indicators for visual clarity
+- Uses 100% MCP tools for all operations
+
+---
+
 ## MCP Tools Used
 
 All skills use the `NotionMCPTools` wrapper class which provides:
@@ -149,14 +210,16 @@ items = json.loads(query_result).get("results", [])
 ```python
 blocks = [
     {
-        "object": "block",
         "type": "paragraph",
         "paragraph": {
             "rich_text": [{"type": "text", "text": {"content": "Summary"}}]
         }
     }
 ]
-await mcp.append_block_children(page_id, blocks)
+await mcp.session.call_tool("API-patch-block-children", {
+    "block_id": page_id,
+    "children": blocks
+})
 ```
 
 ---
