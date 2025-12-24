@@ -110,9 +110,12 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # Validate score
@@ -121,7 +124,7 @@ def main():
         sys.exit(1)
     
     # Find matching students (function already prints results)
-    matching_folders = find_students_by_toefl(args.directory, args.min_score)
+    matching_folders = find_students_by_toefl(directory, args.min_score)
 
 
 if __name__ == '__main__':

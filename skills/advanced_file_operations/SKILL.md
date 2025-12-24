@@ -1,68 +1,32 @@
 ---
 name: advanced-file-management
-description: Advanced file management and analysis tools. Includes directory statistics, student database processing (grades, duplicate names, TOEFL/recommendation filtering), HTML author extraction, music analysis reports, and batch folder creation. Also provides basic FileSystemTools for atomic file operations (read, write, edit, move, search).
+description: Advanced file management tools. Includes batch folder creation, batch file moving, file listing, HTML author extraction, and student database filtering (TOEFL/recommendation). Also provides basic FileSystemTools for atomic file operations (read, write, edit, move, search).
 ---
 
 # Advanced File Management Skill
 
-This skill provides tools for desktop file management and analysis:
+This skill provides tools for desktop file management:
 
-1. **Music analysis**: Generate popularity reports from music data
-2. **Folder creation**: Create multiple folders under a target directory
+1. **Folder creation**: Create multiple folders under a target directory
+2. **Move files**: Move multiple files to a target directory
 3. **List all files**: Recursively list all files under a directory
-4. **File statistics**: Count files, folders, and calculate total size
-5. **Grade-based score**: Calculate student grades from database
-6. **Duplicate name finder**: Find duplicate names in student database
-7. **Extract authors**: Extract authors from HTML papers
-8. **Filter by recommendation**: Find students by recommendation grade
-9. **Filter by TOEFL**: Find students by TOEFL score threshold
+4. **Extract authors**: Extract authors from HTML papers
+5. **Filter by recommendation**: Find students by recommendation grade
+6. **Filter by TOEFL**: Find students by TOEFL score threshold
 
 ## Important Notes
 
 - **Do not use other bash commands**: Do not attempt to use general bash commands or shell operations like cat, ls.
+- **Use relative paths**: Use paths relative to the working directory (e.g., `./folder/file.txt` or `folder/file.txt`).
 
 
-## 1. Music Analysis Report
+## I. Skills
 
-Analyzes music data from multiple artists, calculates popularity scores using a weighted formula, and generates a detailed analysis report.
-
-### Features
-
-- Reads song data from multiple artist directories
-- Supports CSV and TXT file formats
-- Calculates popularity scores using configurable weights:
-  - `popularity_score = (rating × W1) + (play_count_normalized × W2) + (year_factor × W3)`
-  - Default weights: W1=0.4, W2=0.4, W3=0.2
-- Sorts songs by popularity
-
-### Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--output` | `music_analysis_report.txt` | Output report filename |
-| `--rating-weight` | `0.4` | Weight for rating score |
-| `--play-count-weight` | `0.4` | Weight for normalized play count |
-| `--year-weight` | `0.2` | Weight for year factor |
-
-### Example
-
-```bash
-# Generate music analysis report with default weights (0.4, 0.4, 0.2)
-python music_report.py /path/to/directory
-
-# Use a custom output filename
-python music_report.py /path/to/directory --output my_report.txt
-
-# Use custom weights for the popularity formula
-python music_report.py /path/to/directory --rating-weight 0.5 --play-count-weight 0.3 --year-weight 0.2
-```
-
-
-## 2. Create Folders
+### 1. Create Multiple Folders
 
 Creates multiple folders under a target directory.
 
-### Features
+### Features 
 
 - Creates multiple folders with specified names
 - Supports any number of folder names as arguments
@@ -71,13 +35,35 @@ Creates multiple folders under a target directory.
 
 ```bash
 # Create 3 folders
-python create_folders.py /path/to/directory folder1 folder2 folder3
+python create_folders.py . folder1 folder2 folder3
 
 # Create folders with specific names
-python create_folders.py /path/to/directory experiments learning personal
+python create_folders.py ./projects experiments learning personal
 ```
 
-## 3. List All Files
+
+### 2. Move Multiple Files
+
+Move multiple files to a target directory in a single operation.
+
+### Features
+
+- Move multiple files at once
+- Supports files from different directories
+- Reports success and failure for each file
+
+### Example
+
+```bash
+# Move 3 files to archive folder
+python move_files.py ./archive file1.txt file2.txt file3.txt
+
+# Move files from different directories
+python move_files.py ./backup ./data/log1.txt ./data/log2.txt ./temp/cache.dat
+```
+
+
+### 3. List All Files
 
 Recursively list all files under a given directory path. Useful for quickly understanding project directory structure.
 
@@ -91,94 +77,15 @@ Recursively list all files under a given directory path. Useful for quickly unde
 
 ```bash
 # List all files (excluding hidden)
-python list_all_files.py /path/to/directory
+python list_all_files.py .
 
 # Include hidden files
-python list_all_files.py /path/to/directory --include-hidden
+python list_all_files.py ./data --include-hidden
 ```
 
 ---
 
-## 4. File Statistics
-
-Generate file statistics for a directory: total files, folders, and size.
-
-### Features
-
-- Count total files (excluding .DS_Store)
-- Count total folders
-- Calculate total size in bytes (includes .DS_Store for size only)
-
-### Example
-
-```bash
-python file_statistics.py /path/to/directory
-```
-
----
-
-## 5. Grade-Based Score
-
-Calculate student grades from student database and generate output files.
-
-### Features
-
-- Read all basic_info.txt files from student folders
-- Extract chinese, math, english scores
-- Calculate grades: A(90+), B(80-89), C(70-79), D(60-69), F(<60)
-- Generate student_grades.csv and grade_summary.txt
-
-### Example
-
-```bash
-python gradebased_score.py /path/to/student_database
-
-# Specify output directory
-python gradebased_score.py /path/to/student_database --output-dir /path/to/output
-```
-
-### Output Files
-
-1. **student_grades.csv**: student_id, name, chinese_score, chinese_grade, math_score, math_grade, english_score, english_grade
-2. **grade_summary.txt**: Total students, A/B/C/D/F counts per subject, pass/fail counts
-
----
-
-## 6. Duplicate Name Finder
-
-Find duplicate names in student database.
-
-### Features
-
-- Scan all student folders
-- Extract names from basic_info.txt
-- Identify names that appear more than once
-- Generate namesake.txt
-
-### Example
-
-```bash
-python duplicate_name.py /path/to/student_database
-
-# Specify output file
-python duplicate_name.py /path/to/student_database --output /path/to/namesake.txt
-```
-
-### Output Format
-
-```
-name: xxx
-count: xxx
-ids: xxx, xxx, ...
-
-name: yyy
-count: yyy
-ids: yyy, yyy, ...
-```
-
----
-
-## 7. Extract Authors
+### 4. Extract Authors
 
 Extract authors from all HTML papers in a directory using `<meta name="citation_author">` tags.
 
@@ -193,15 +100,15 @@ Extract authors from all HTML papers in a directory using `<meta name="citation_
 
 ```bash
 # Extract and print authors from all HTML files
-python extract_authors.py /path/to/papers
+python extract_authors.py ./papers
 
 # Save to file
-python extract_authors.py /path/to/papers --output authors.txt
+python extract_authors.py ./papers --output authors.txt
 ```
 
 ---
 
-## 8. Filter by Recommendation Grade
+### 5. Filter by Recommendation Grade
 
 Find students with specified grade(s) from recommendation_letter.txt files.
 
@@ -214,18 +121,18 @@ Find students with specified grade(s) from recommendation_letter.txt files.
 
 ```bash
 # Filter students with grade S
-python filter_by_recommendation.py /path/to/student_database S
+python filter_by_recommendation.py ./student_database S
 
 # Filter students with grade A
-python filter_by_recommendation.py /path/to/student_database A
+python filter_by_recommendation.py ./student_database A
 
 # Filter students with grade S OR A
-python filter_by_recommendation.py /path/to/student_database SA
+python filter_by_recommendation.py ./student_database SA
 ```
 
 ---
 
-## 9. Filter by TOEFL Score
+### 6. Filter by TOEFL Score
 
 Find students with TOEFL score >= a specified threshold.
 
@@ -239,10 +146,10 @@ Find students with TOEFL score >= a specified threshold.
 
 ```bash
 # Find students with TOEFL >= 100
-python filter_by_toefl.py /path/to/student_database 100
+python filter_by_toefl.py ./student_database 100
 
 # Find students with TOEFL >= 90
-python filter_by_toefl.py /path/to/student_database 90
+python filter_by_toefl.py ./student_database 90
 ```
 
 ---
@@ -251,7 +158,7 @@ python filter_by_toefl.py /path/to/student_database 90
 
 Below are the basic tool functions. These are atomic operations for flexible combination.
 
-**Important**: The first argument `/path/to/base` is the **base directory** (allowed directory). This is a security sandbox - all file operations are restricted to this directory and its subdirectories. Files outside this boundary cannot be accessed.
+**Prefer Skills over Basic Tools**: When a task matches one of the Skills above (e.g., creating multiple folders), use the corresponding Skill instead of Basic Tools. Skills are more efficient because they can perform batch operations in a single call. For example, use "Create Multiple Folders" skill to create several folders at once, instead of calling `create_directory()` multiple times.
 
 **Note**: Code should be written without line breaks.
 
@@ -259,7 +166,7 @@ Below are the basic tool functions. These are atomic operations for flexible com
 
 ```bash
 # Standard format
-python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+python run_fs_ops.py -c "await fs.read_text_file('./file.txt')"
 ```
 
 ---
@@ -274,10 +181,10 @@ python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.tx
 **Example**:
 ```bash
 # Read entire file
-python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+python run_fs_ops.py -c "await fs.read_text_file('./data/file.txt')"
 
 # Read first 10 lines
-python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt', head=10)"
+python run_fs_ops.py -c "await fs.read_text_file('./data/file.txt', head=10)"
 ```
 
 ---
@@ -289,7 +196,7 @@ python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.tx
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.read_multiple_files(['/path/a.txt', '/path/b.txt'])"
+python run_fs_ops.py -c "await fs.read_multiple_files(['./a.txt', './b.txt'])"
 ```
 
 ---
@@ -303,7 +210,7 @@ python run_fs_ops.py /path/to/base -c "await fs.read_multiple_files(['/path/a.tx
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.write_file('/path/to/new.txt', 'Hello World')"
+python run_fs_ops.py -c "await fs.write_file('./new.txt', 'Hello World')"
 ```
 
 ---
@@ -315,7 +222,7 @@ python run_fs_ops.py /path/to/base -c "await fs.write_file('/path/to/new.txt', '
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.edit_file('/path/to/file.txt', [{'oldText': 'foo', 'newText': 'bar'}])"
+python run_fs_ops.py -c "await fs.edit_file('./file.txt', [{'oldText': 'foo', 'newText': 'bar'}])"
 ```
 
 ---
@@ -329,7 +236,7 @@ python run_fs_ops.py /path/to/base -c "await fs.edit_file('/path/to/file.txt', [
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.create_directory('/path/to/new/nested/dir')"
+python run_fs_ops.py -c "await fs.create_directory('./new/nested/dir')"
 ```
 
 ---
@@ -341,7 +248,7 @@ python run_fs_ops.py /path/to/base -c "await fs.create_directory('/path/to/new/n
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.list_directory('/path/to/directory')"
+python run_fs_ops.py -c "await fs.list_directory('.')"
 ```
 
 ---
@@ -353,7 +260,7 @@ python run_fs_ops.py /path/to/base -c "await fs.list_directory('/path/to/directo
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.list_files('/path/to/directory')"
+python run_fs_ops.py -c "await fs.list_files('./data')"
 ```
 
 ---
@@ -367,7 +274,7 @@ python run_fs_ops.py /path/to/base -c "await fs.list_files('/path/to/directory')
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.move_file('/path/old.txt', '/path/new.txt')"
+python run_fs_ops.py -c "await fs.move_file('./old.txt', './new.txt')"
 ```
 
 ---
@@ -379,8 +286,8 @@ python run_fs_ops.py /path/to/base -c "await fs.move_file('/path/old.txt', '/pat
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.search_files('*.txt')"
-python run_fs_ops.py /path/to/base -c "await fs.search_files('**/*.py', '/path/to/search')"
+python run_fs_ops.py -c "await fs.search_files('*.txt')"
+python run_fs_ops.py -c "await fs.search_files('**/*.py', './src')"
 ```
 
 ---
@@ -393,7 +300,7 @@ python run_fs_ops.py /path/to/base -c "await fs.search_files('**/*.py', '/path/t
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.get_file_info('/path/to/file.txt')"
+python run_fs_ops.py -c "await fs.get_file_info('./file.txt')"
 ```
 
 ---
@@ -404,7 +311,7 @@ python run_fs_ops.py /path/to/base -c "await fs.get_file_info('/path/to/file.txt
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.get_file_size('/path/to/file.txt')"
+python run_fs_ops.py -c "await fs.get_file_size('./file.txt')"
 ```
 
 ---
@@ -415,7 +322,7 @@ python run_fs_ops.py /path/to/base -c "await fs.get_file_size('/path/to/file.txt
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.get_file_mtime('/path/to/file.txt')"
+python run_fs_ops.py -c "await fs.get_file_mtime('./file.txt')"
 ```
 
 ---
@@ -426,6 +333,5 @@ python run_fs_ops.py /path/to/base -c "await fs.get_file_mtime('/path/to/file.tx
 
 **Example**:
 ```bash
-python run_fs_ops.py /path/to/base -c "await fs.get_files_info_batch(['a.txt', 'b.txt'], '/path/to/files')"
+python run_fs_ops.py -c "await fs.get_files_info_batch(['a.txt', 'b.txt'], './data')"
 ```
-

@@ -1,7 +1,7 @@
 # desktop
 # python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/music_report --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/project_management --models claude-sonnet-4.5 --k 1
-python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/timeline_extraction --models claude-sonnet-4.5 --k 1
+python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/project_management --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/timeline_extraction --models claude-sonnet-4.5 --k 1
 
 # # desktop_template
 # python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop_template/budget_computation --models claude-sonnet-4.5 --k 1

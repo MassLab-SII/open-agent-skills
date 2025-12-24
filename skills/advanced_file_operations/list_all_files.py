@@ -69,13 +69,16 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # List all files (function already prints results)
-    files = list_all_files(args.directory, args.include_hidden)
+    files = list_all_files(directory, args.include_hidden)
 
 
 if __name__ == '__main__':

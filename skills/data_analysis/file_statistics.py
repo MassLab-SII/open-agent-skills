@@ -67,13 +67,16 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # Get statistics (function already prints results)
-    total_files, total_folders, total_size = get_file_statistics(args.directory)
+    total_files, total_folders, total_size = get_file_statistics(directory)
 
 
 if __name__ == '__main__':

@@ -232,13 +232,17 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    output_dir = os.path.abspath(args.output_dir) if args.output_dir else None
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # Calculate grades (function handles everything)
-    calculate_student_grades(args.directory, args.output_dir)
+    calculate_student_grades(directory, output_dir)
 
 
 if __name__ == '__main__':

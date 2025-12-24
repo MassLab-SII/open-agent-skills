@@ -10,10 +10,13 @@ Usage:
     python run_fs_ops.py -c "await fs.read_text_file('/path/to/file.txt')"
     python run_fs_ops.py -c "await fs.list_files('/path/to/directory')"
 
+Note: The base directory is read from the FILESYSTEM_TEST_DIR environment variable.
+
 """
 
 import asyncio
 import argparse
+import os
 import sys
 
 from utils import FileSystemTools
@@ -62,26 +65,34 @@ def main():
         epilog="""
 Examples:
     # Read a file
-    python run_fs_ops.py /path/to/base -c "await fs.read_text_file('/path/to/file.txt')"
+    python run_fs_ops.py -c "await fs.read_text_file('/path/to/file.txt')"
     
     # List directory
-    python run_fs_ops.py /path/to/base -c "await fs.list_files('/path/to/directory')"
+    python run_fs_ops.py -c "await fs.list_files('/path/to/directory')"
     
     # Write a file
-    python run_fs_ops.py /path/to/base -c "await fs.write_file('/path/to/new.txt', 'hello')"
+    python run_fs_ops.py -c "await fs.write_file('/path/to/new.txt', 'hello')"
     
     # Get file info
-    python run_fs_ops.py /path/to/base -c "await fs.get_file_info('/path/to/file.txt')"
+    python run_fs_ops.py -c "await fs.get_file_info('/path/to/file.txt')"
     
     # Search files
-    python run_fs_ops.py /path/to/base -c "await fs.search_files('*.py')"
+    python run_fs_ops.py -c "await fs.search_files('*.py')"
+
+Note: The base directory is read from the FILESYSTEM_TEST_DIR environment variable.
 """
     )
-    parser.add_argument("base_directory", help="Base directory for file operations (allowed directory)")
     parser.add_argument("-c", "--code", help="Filesystem operations code string")
     parser.add_argument("-f", "--file", help="File containing filesystem operations")
     
     args = parser.parse_args()
+    
+    # Get base directory from environment variable
+    base_directory = os.getenv("FILESYSTEM_TEST_DIR")
+    if not base_directory:
+        print("Error: FILESYSTEM_TEST_DIR environment variable is not set.")
+        print("This variable should be set automatically by the task runner.")
+        sys.exit(1)
     
     if args.code:
         code = args.code
@@ -94,10 +105,11 @@ Examples:
     
     print("Running filesystem operations...")
     print("-" * 40)
-    asyncio.run(run_operations(code, args.base_directory))
+    asyncio.run(run_operations(code, base_directory))
     print("-" * 40)
     print("Done!")
 
 
 if __name__ == "__main__":
     main()
+

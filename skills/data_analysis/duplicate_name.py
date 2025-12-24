@@ -80,20 +80,25 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # Find duplicates
-    duplicates = find_duplicate_names(args.directory)
+    duplicates = find_duplicate_names(directory)
     
     if not duplicates:
         print("No duplicate names found.")
         return
     
     # Generate output
-    output_path = args.output or os.path.join(args.directory, 'namesake.txt')
+    output_path = args.output or os.path.join(directory, 'namesake.txt')
+    if args.output:
+        output_path = os.path.abspath(args.output)
     
     lines = []
     for name in sorted(duplicates.keys()):

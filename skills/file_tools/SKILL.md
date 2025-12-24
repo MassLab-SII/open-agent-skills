@@ -1,11 +1,11 @@
 ---
 name: file-tools
-description: Comprehensive file analysis and organization toolkit. Provides duplicate detection, file merging/splitting, pattern matching, text transformation, and file classification by size or time.
+description: File analysis and organization toolkit. Provides duplicate detection, file merging/splitting, pattern matching, text transformation, and file classification by size or time.
 ---
 
 # File Tools Skill
 
-This skill provides comprehensive file analysis, manipulation, and organization:
+This skill provides file analysis, manipulation, and organization:
 
 1. **Duplicate detection**: Find and organize files with identical content
 2. **File merging**: Combine multiple small files into one

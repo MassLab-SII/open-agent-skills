@@ -104,13 +104,16 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # Extract authors (function already prints results)
-    results = extract_authors_from_html(args.directory)
+    results = extract_authors_from_html(directory)
     
     # Generate output file if requested
     if args.output:

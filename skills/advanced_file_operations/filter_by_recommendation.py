@@ -113,9 +113,12 @@ def main():
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    directory = os.path.abspath(args.directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a valid directory", file=sys.stderr)
+    if not os.path.isdir(directory):
+        print(f"Error: '{directory}' is not a valid directory", file=sys.stderr)
         sys.exit(1)
     
     # Validate grades
@@ -127,7 +130,7 @@ def main():
             sys.exit(1)
     
     # Find matching students (function already prints results)
-    matching_folders = find_students_by_grade(args.directory, target_grades)
+    matching_folders = find_students_by_grade(directory, target_grades)
 
 
 if __name__ == '__main__':

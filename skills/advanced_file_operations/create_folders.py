@@ -64,12 +64,15 @@ Examples:
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    target_dir = os.path.abspath(args.target_directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.target_directory):
-        # print(f"Error: Directory '{args.target_directory}' does not exist")
+    if not os.path.isdir(target_dir):
+        # print(f"Error: Directory '{target_dir}' does not exist")
         return
     
-    asyncio.run(create_folders(args.target_directory, args.folder_names))
+    asyncio.run(create_folders(target_dir, args.folder_names))
 
 
 if __name__ == "__main__":

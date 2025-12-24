@@ -295,14 +295,17 @@ Examples:
     
     args = parser.parse_args()
     
+    # Convert to absolute path if relative
+    target_dir = os.path.abspath(args.target_directory)
+    
     # Validate directory exists
-    if not os.path.isdir(args.target_directory):
-        print(f"Error: Directory '{args.target_directory}' does not exist")
+    if not os.path.isdir(target_dir):
+        print(f"Error: Directory '{target_dir}' does not exist")
         return
     
     # Create analyzer and run
     analyzer = MusicAnalyzer(
-        target_dir=args.target_directory,
+        target_dir=target_dir,
         output_filename=args.output,
         rating_weight=args.rating_weight,
         play_count_weight=args.play_count_weight,
