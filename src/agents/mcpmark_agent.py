@@ -91,6 +91,7 @@ class MCPMarkAgent(BaseMCPAgent):
         
         # Track active skill in current execution
         self._active_skill: Optional[str] = None
+        self._skill_triggered: bool = False  # Ensure skill is only triggered once
         
         logger.debug(
             "Initialized MCPMarkAgent for '%s' with model '%s' (Claude: %s, Thinking: %s, Reasoning: %s)",
@@ -511,11 +512,12 @@ class MCPMarkAgent(BaseMCPAgent):
                     for line in text_content.splitlines():
                         logger.info(f"| {line}")
             
-            # Check for skill trigger in assistant's response
-            if assistant_text and not self._active_skill:
+            # Check for skill trigger in assistant's response (only once per execution)
+            if assistant_text and not self._active_skill and not self._skill_triggered:
                 triggered_skill = self._check_skill_trigger(assistant_text)
                 if triggered_skill:
                     self._active_skill = triggered_skill
+                    self._skill_triggered = True  # Mark as triggered to prevent re-triggering
                     logger.info(f"Skill triggered: {triggered_skill}")
             
             # Extract and execute commands if skill is active
@@ -880,10 +882,11 @@ class MCPMarkAgent(BaseMCPAgent):
 
                 # revised by yxy
                 triggered_skill = None
-                if assistant_text:
+                if assistant_text and not self._skill_triggered:
                     triggered_skill = self._check_skill_trigger(assistant_text)
                     if triggered_skill and triggered_skill != self._active_skill:
                         self._active_skill = triggered_skill
+                        self._skill_triggered = True  # Mark as triggered to prevent re-triggering
                         logger.info(f"Skill triggered: {triggered_skill}")
                 
                 # Extract and execute commands if skill is active
