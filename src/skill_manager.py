@@ -145,6 +145,7 @@ class SkillManager:
             "- Commands will be executed automatically and their output will be provided back to you\n"
             "- When you first mention a skill, wait for the full skill documentation to be provided. Do not output commands until you have received and reviewed the complete documentation\n"
             "- When executing Python scripts, use the script name directly without path prefixes (e.g., 'python script.py' not 'python /path/to/script.py'). The system will locate the script automatically\n"
+            "Now, in this turn, please output ONLY the skill you have selected. Use the following format: 'I will use the [skill name] skill'. Do NOT output any code or commands besides this statement.\n"
         )
         
         return "".join(prompt_parts)
