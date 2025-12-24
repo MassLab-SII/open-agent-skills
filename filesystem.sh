@@ -1,38 +1,83 @@
+#!/bin/bash
+
+# ============================================================
+# Filesystem MCP Pipeline Test Script
+# ============================================================
+
+# Run all tasks
 # python -m pipeline --exp-name exp --mcp filesystem --tasks all --models gpt-5 --k 1
-# python -m pipeline --exp-name budget_computation --mcp filesystem --tasks folder_structure/structure_analysis --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name budget_computation --mcp filesystem --tasks legal_document/solution_tracing --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name author_folders --mcp filesystem --tasks papers/author_folders --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name find_math_paper --mcp filesystem --tasks papers/find_math_paper --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name organize_legacy_papers --mcp filesystem --tasks papers/organize_legacy_papers --models claude-sonnet-4.5 --k 1
 
-# [succeed] python -m pipeline --exp-name english_talent --mcp filesystem --tasks student_database/english_talent --models claude-sonnet-4.5 --k 1
+# ============================================================
+# desktop
+# ============================================================
+# python -m pipeline --exp-name music_report --mcp filesystem --tasks desktop/music_report --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name project_management --mcp filesystem --tasks desktop/project_management --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name timeline_extraction --mcp filesystem --tasks desktop/timeline_extraction --models claude-sonnet-4.5 --k 1
 
-# python -m pipeline --exp-name gradebased_score --mcp filesystem --tasks student_database/gradebased_score --models claude-sonnet-4.5 --k 1
+# ============================================================
+# desktop_template
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop_template/budget_computation --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop_template/contact_information --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop_template/file_arrangement --models claude-sonnet-4.5 --k 1
 
+# ============================================================
+# file_context
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_context/duplicates_searching --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_context/file_merging --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_context/file_splitting --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_context/pattern_matching --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_context/uppercase --models claude-sonnet-4.5 --k 1
 
-# python -m pipeline --exp-name output_analysis --mcp filesystem --tasks threestudio/output_analysis --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name requirements_completion --mcp filesystem --tasks threestudio/requirements_completion --models claude-sonnet-4.5 --k 1
-# [succeed] python -m pipeline --exp-name debugging --mcp filesystem --tasks votenet/debugging --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name requirements_writing --mcp filesystem --tasks votenet/requirements_writing --models claude-sonnet-4.5 --k 1
+# ============================================================
+# file_property
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_property/size_classification --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks file_property/time_classification --models claude-sonnet-4.5 --k 1
 
+# ============================================================
+# folder_structure
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks folder_structure/structure_analysis --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks folder_structure/structure_mirror --models claude-sonnet-4.5 --k 1
 
+# ============================================================
+# legal_document
+# ============================================================
+python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks legal_document/dispute_review --models claude-sonnet-4.5 --k 1
+python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks legal_document/individual_comments --models claude-sonnet-4.5 --k 1
+python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks legal_document/solution_tracing --models claude-sonnet-4.5 --k 1
 
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks folder_structure/structure_analysis --models gpt-5 --k 3 
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks legal_document/solution_tracing --models gpt-5 --k 3 
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks papers/author_folders --models gpt-5 --k 3 
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks papers/find_math_paper --models gpt-5 --k 3  
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks papers/organize_legacy_papers --models gpt-5 --k 3  
+# ============================================================
+# papers
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks papers/author_folders --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks papers/find_math_paper --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks papers/organize_legacy_papers --models claude-sonnet-4.5 --k 1
 
-# # [succeed] python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks student_database/english_talent --models gpt-5 --k 3  
+# ============================================================
+# student_database
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks student_database/duplicate_name --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks student_database/english_talent --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks student_database/gradebased_score --models claude-sonnet-4.5 --k 1
 
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks student_database/gradebased_score --models gpt-5 --k 3  
+# ============================================================
+# threestudio
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks threestudio/code_locating --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks threestudio/output_analysis --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks threestudio/requirements_completion --models claude-sonnet-4.5 --k 1
 
+# ============================================================
+# votenet
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks votenet/dataset_comparison --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks votenet/debugging --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks votenet/requirements_writing --models claude-sonnet-4.5 --k 1
 
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks threestudio/output_analysis --models gpt-5 --k 3  
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks threestudio/requirements_completion --models gpt-5 --k 3  
-# # [succeed] python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks votenet/debugging --models gpt-5 --k 3  
-# python -m pipeline --exp-name new-gpt5 --mcp filesystem --tasks votenet/requirements_writing --models gpt-5 --k 3  
-
-# python -m pipeline --exp-name file_context --mcp filesystem --tasks file_context --models gpt-5 --k 1
-
-python -m pipeline --exp-name test_music_report --mcp filesystem --tasks desktop/music_report --models claude-sonnet-4.5 --k 1
+# ============================================================
+# Active command (uncomment to run)
+# ============================================================
+# python -m pipeline --exp-name test_all_file_system --mcp filesystem --tasks desktop/music_report --models claude-sonnet-4.5 --k 1

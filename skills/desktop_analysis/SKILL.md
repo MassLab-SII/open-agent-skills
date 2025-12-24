@@ -9,6 +9,7 @@ This skill provides data analysis and reporting tools:
 
 1. **Music analysis**: Generate popularity reports from music data
 2. **File statistics**: Count files, folders, and calculate total size
+3. **List all files**: Recursively list all files under a directory
 
 ## Important Notes
 
@@ -74,11 +75,35 @@ python file_statistics.py .
 
 ---
 
+### 3. List All Files
+
+Recursively list all files under a given directory path. Useful for quickly understanding project directory structure.
+
+#### Features
+
+- Recursively traverse all subdirectories
+- Option to exclude hidden files (like .DS_Store)
+- Output one file path per line, including both path and filename (relative to input directory)
+
+#### Example
+
+```bash
+# List all files (excluding hidden)
+python list_all_files.py .
+
+# Include hidden files
+python list_all_files.py ./data --include-hidden
+```
+
+---
+
 ## II. Basic Tools (FileSystemTools)
 
 Below are the basic tool functions. These are atomic operations for flexible combination.
 
 **Prefer Skills over Basic Tools**: When a task matches one of the Skills above, use the corresponding Skill instead of Basic Tools. Skills are more efficient because they can perform batch operations in a single call.
+
+**Prefer List All Files over list_directory/list_files**: When you need to list files in a directory, prefer using the `list_all_files.py` skill instead of `list_directory` or `list_files` basic tools. The skill provides recursive listing with better output formatting.
 
 **Note**: Code should be written without line breaks.
 

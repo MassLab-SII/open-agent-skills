@@ -1,6 +1,6 @@
 ---
 name: file_organization
-description: File organization toolkit. Provides duplicate detection, file merging/splitting, pattern matching, text transformation, and file classification by size or time.
+description: File organization toolkit. Provides duplicate detection, file merging/splitting, pattern matching, text processing (like case conversion, word counting), and file classification by size or time.
 ---
 
 # File Organization Skill

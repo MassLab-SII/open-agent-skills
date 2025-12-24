@@ -16,6 +16,7 @@ This skill provides tools for desktop file management:
 
 - **Do not use other bash commands**: Do not attempt to use general bash commands or shell operations like cat, ls.
 - **Use relative paths**: Use paths relative to the working directory (e.g., `./folder/file.txt` or `folder/file.txt`).
+- **Do not create scripts**: Do not use `write_file` to create any scripts.
 
 
 ## I. Skills
@@ -142,6 +143,8 @@ python run_fs_ops.py -c "await fs.read_text_file('./data/file.txt')"
 #### `read_multiple_files(paths)`
 **Use Cases**:
 - Read multiple files simultaneously
+- Use when reading a large number of files (e.g., multiple paper html pages)
+
 
 **Example**:
 ```bash

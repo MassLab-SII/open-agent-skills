@@ -31,7 +31,7 @@ def _extract_authors_from_file(filepath: str) -> list[str]:
         
         # Find all citation_author meta tags
         # Pattern: <meta name="citation_author" content="..."/>
-        pattern = r'<meta\s+name=["\']citation_author["\']\s+content=["\']([^"\']+)["\'][^>]*/?\\s*>'
+        pattern = r'<meta\s+name=["\']citation_author["\']\s+content=["\']([^"\']+)["\'][^>]*/?\s*>'
         matches = re.findall(pattern, content, re.IGNORECASE)
         
         # Clean up author names (decode HTML entities)
@@ -120,7 +120,7 @@ def main():
         output_lines = []
         for result in results:
             output_lines.append(f"File: {result['filename']}")
-            output_lines.append(f"Authors ({len(result['authors'])}):")
+            output_lines.append(f"Authors ({len(result['authors'])}:")
             for author in result['authors']:
                 output_lines.append(f"  - {author}")
             output_lines.append("")
