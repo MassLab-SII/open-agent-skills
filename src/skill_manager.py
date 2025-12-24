@@ -268,9 +268,15 @@ class SkillManager:
         Returns:
             Tuple of (success, stdout, stderr)
         """
+        import shlex
+        
+        # Special handling for run_fs_ops.py -c "..." commands containing write_file
+        # These often contain complex strings that break shlex parsing
+        if 'run_fs_ops.py' in command and ' -c ' in command and 'write_file' in command:
+            return self._execute_write_file_command(command, cwd)
+        
         # Parse the command to extract script name and arguments
         # Use shlex to properly handle quoted arguments with special characters
-        import shlex
         try:
             parts = shlex.split(command)
         except ValueError as e:
@@ -320,6 +326,112 @@ class SkillManager:
         logger.debug(f"Working directory: {cwd}")
         
         return self._run_subprocess(shell_cmd, cwd)
+    
+    def _execute_write_file_command(self, command: str, cwd: Path) -> Tuple[bool, str, str]:
+        """
+        Special handler for run_fs_ops.py -c "..." commands.
+        
+        These commands often contain complex strings (especially write_file with multi-line content)
+        that break standard shlex parsing. This method uses manual parsing to extract the -c argument.
+        
+        Args:
+            command: Full command string like 'python run_fs_ops.py -c "await fs.write_file(...)"'
+            cwd: Working directory
+            
+        Returns:
+            Tuple of (success, stdout, stderr)
+        """
+        # Locate run_fs_ops.py script
+        script_path = self._locate_skill_script("run_fs_ops.py")
+        if not script_path:
+            logger.error("Could not locate run_fs_ops.py")
+            return False, "", "Script not found: run_fs_ops.py"
+        
+        # Extract the -c argument manually
+        # Pattern: python run_fs_ops.py -c "..." or python run_fs_ops.py -c '...'
+        c_flag_pos = command.find(' -c ')
+        if c_flag_pos == -1:
+            logger.error("Could not find -c flag in run_fs_ops.py command")
+            return False, "", "Invalid run_fs_ops.py command format"
+        
+        # Get everything after -c (skip the space after -c)
+        after_c = command[c_flag_pos + 4:].strip()
+        
+        if not after_c:
+            logger.error("No argument found after -c flag")
+            return False, "", "No argument after -c flag"
+        
+        quote_char = after_c[0]
+        if quote_char not in ('"', "'"):
+            # Not quoted, just use the rest as-is
+            code_arg = after_c
+        else:
+            # Find the matching closing quote using manual parsing
+            code_arg = self._extract_quoted_string(after_c, quote_char)
+            if code_arg is None:
+                logger.error("Could not extract quoted argument from -c flag")
+                return False, "", "Failed to parse -c argument"
+        
+        logger.debug(f"Extracted -c argument (length={len(code_arg)})")
+        
+        # Get Python executable
+        project_root = Path(__file__).parent.parent
+        venv_activate = project_root / self.venv_path / "bin" / "activate"
+        
+        if venv_activate.exists():
+            python_executable = project_root / self.venv_path / "bin" / "python"
+            if not python_executable.exists():
+                python_executable = "python"
+        else:
+            python_executable = "python"
+        
+        # Build command - pass the code as a single argument
+        shell_cmd = [str(python_executable), str(script_path), "-c", code_arg]
+        
+        logger.debug(f"Executing fs_ops command with -c argument")
+        logger.debug(f"Working directory: {cwd}")
+        
+        return self._run_subprocess(shell_cmd, cwd)
+    
+    def _extract_quoted_string(self, s: str, quote_char: str) -> Optional[str]:
+        """
+        Extract the content of a quoted string from the beginning of s.
+        
+        Does NOT process escape sequences - keeps them as-is for passing to run_fs_ops.py
+        which will handle them via Python's eval().
+        
+        Args:
+            s: String starting with a quote character
+            quote_char: The quote character (" or ')
+            
+        Returns:
+            The content inside the quotes (escapes preserved), or None if parsing fails
+        """
+        if not s or s[0] != quote_char:
+            return None
+        
+        result = []
+        i = 1  # Start after opening quote
+        
+        while i < len(s):
+            char = s[i]
+            
+            if char == '\\' and i + 1 < len(s):
+                # Escape sequence - keep as-is (don't process)
+                next_char = s[i + 1]
+                result.append(char)
+                result.append(next_char)
+                i += 2
+            elif char == quote_char:
+                # Found closing quote
+                return ''.join(result)
+            else:
+                result.append(char)
+                i += 1
+        
+        # No closing quote found - return what we have (best effort)
+        logger.warning("No closing quote found, using best-effort extraction")
+        return ''.join(result)
     
     def _execute_shell_command(self, command: str, cwd: Path) -> Tuple[bool, str, str]:
         """
@@ -373,6 +485,44 @@ class SkillManager:
             logger.error(f"Subprocess execution failed: {e}")
             return False, "", str(e)
     
+    def _check_quotes_balanced(self, s: str) -> bool:
+        """
+        Check if quotes are balanced in a string.
+        
+        This is a manual implementation that handles escaped quotes and
+        works correctly with strings containing \\n escape sequences
+        (which shlex.split() fails on).
+        
+        Args:
+            s: String to check
+            
+        Returns:
+            True if quotes are balanced, False otherwise
+        """
+        in_single_quote = False
+        in_double_quote = False
+        i = 0
+        
+        while i < len(s):
+            char = s[i]
+            
+            # Handle escape sequences
+            if char == '\\' and i + 1 < len(s):
+                # Skip escaped character
+                i += 2
+                continue
+            
+            # Toggle quote state
+            if char == '"' and not in_single_quote:
+                in_double_quote = not in_double_quote
+            elif char == "'" and not in_double_quote:
+                in_single_quote = not in_single_quote
+            
+            i += 1
+        
+        # Quotes are balanced if we're not inside any quote
+        return not in_single_quote and not in_double_quote
+    
     def extract_commands_from_text(self, text: str) -> List[str]:
         """
         Extract command strings from model output.
@@ -421,18 +571,31 @@ class SkillManager:
                 # Check quote state by scanning the accumulated command
                 full_cmd = '\n'.join(current_command)
                 
-                # Use shlex to check if quotes are balanced
-                try:
-                    shlex.split(full_cmd)
-                    # If no exception, quotes are balanced - command is complete
-                    complete_cmd = full_cmd.strip()
-                    if complete_cmd:
-                        result.append(complete_cmd)
-                    current_command = []
-                    in_quotes = False
-                except ValueError:
-                    # Unbalanced quotes - continue accumulating
-                    in_quotes = True
+                # Special handling for fs.write_file commands - use manual quote matching
+                # because shlex.split() fails on long strings with \n escape sequences
+                if 'fs.write_file' in full_cmd or 'write_file' in full_cmd:
+                    # Use manual quote balance check
+                    if self._check_quotes_balanced(full_cmd):
+                        complete_cmd = full_cmd.strip()
+                        if complete_cmd:
+                            result.append(complete_cmd)
+                        current_command = []
+                        in_quotes = False
+                    else:
+                        in_quotes = True
+                else:
+                    # Use shlex to check if quotes are balanced
+                    try:
+                        shlex.split(full_cmd)
+                        # If no exception, quotes are balanced - command is complete
+                        complete_cmd = full_cmd.strip()
+                        if complete_cmd:
+                            result.append(complete_cmd)
+                        current_command = []
+                        in_quotes = False
+                    except ValueError:
+                        # Unbalanced quotes - continue accumulating
+                        in_quotes = True
             
             # Handle any remaining accumulated command (even if quotes unbalanced)
             if current_command:

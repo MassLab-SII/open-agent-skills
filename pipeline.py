@@ -172,10 +172,10 @@ def main():
 
 
 if __name__ == "__main__":
-    import os
-    import debugpy
-    debugpy.listen(("localhost", 5678))
-    print("⏳ 等待调试器附加...")
-    debugpy.wait_for_client()
-    print("🚀 调试器已附加！继续执行...")
+    # import os
+    # import debugpy
+    # debugpy.listen(("localhost", 5678))
+    # print("⏳ 等待调试器附加...")
+    # debugpy.wait_for_client()
+    # print("🚀 调试器已附加！继续执行...")
     main()

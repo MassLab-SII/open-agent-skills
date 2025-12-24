@@ -1,107 +1,129 @@
 ---
-name: advanced-file-management
-description: Advanced file management tools. Includes batch folder creation, batch file moving, file listing, and HTML author extraction.
+name: student-database
+description: Student database processing tools. Includes grade calculation, duplicate name detection, recommendation letter filtering, and TOEFL score filtering.
 ---
 
-# Advanced File Management Skill
+# Student Database Skill
 
-This skill provides tools for desktop file management:
+This skill provides tools for processing student database:
 
-1. **Folder creation**: Create multiple folders under a target directory
-2. **Move files**: Move multiple files to a target directory
-3. **List all files**: Recursively list all files under a directory
-4. **Extract authors**: Extract authors from HTML papers
+1. **Grade calculation**: Calculate student grades from scores
+2. **Duplicate name finder**: Find duplicate names in database
+3. **Filter by recommendation**: Find students by recommendation grade
+4. **Filter by TOEFL**: Find students by TOEFL score threshold
 
 ## Important Notes
 
 - **Do not use other bash commands**: Do not attempt to use general bash commands or shell operations like cat, ls.
-- **Use relative paths**: Use paths relative to the working directory (e.g., `./folder/file.txt` or `folder/file.txt`).
+- **Use relative paths**: Use paths relative to the working directory (e.g., `./student_database`).
 
+---
 
 ## I. Skills
 
-### 1. Create Multiple Folders
+### 1. Grade-Based Score
 
-Creates multiple folders under a target directory.
+Calculate student grades from student database and generate output files.
 
-### Features 
+#### Features
 
-- Creates multiple folders with specified names
-- Supports any number of folder names as arguments
+- Read all basic_info.txt files from student folders
+- Extract chinese, math, english scores
+- Calculate grades: A(90+), B(80-89), C(70-79), D(60-69), F(<60)
+- Generate student_grades.csv and grade_summary.txt
 
-### Example
+#### Example
 
 ```bash
-# Create 3 folders
-python create_folders.py . folder1 folder2 folder3
+python gradebased_score.py ./student_database
 
-# Create folders with specific names
-python create_folders.py ./projects experiments learning personal
+# Specify output directory
+python gradebased_score.py ./student_database --output-dir ./output
 ```
 
+#### Output Files
 
-### 2. Move Multiple Files
+1. **student_grades.csv**: student_id, name, chinese_score, chinese_grade, math_score, math_grade, english_score, english_grade
+2. **grade_summary.txt**: Total students, A/B/C/D/F counts per subject, pass/fail counts
 
-Move multiple files to a target directory in a single operation.
+---
 
-### Features
+### 2. Duplicate Name Finder
 
-- Move multiple files at once
-- Supports files from different directories
-- Reports success and failure for each file
+Find duplicate names in student database.
 
-### Example
+#### Features
+
+- Scan all student folders
+- Extract names from basic_info.txt
+- Identify names that appear more than once
+- Generate namesake.txt
+
+#### Example
 
 ```bash
-# Move 3 files to archive folder
-python move_files.py ./archive file1.txt file2.txt file3.txt
+python duplicate_name.py ./student_database
 
-# Move files from different directories
-python move_files.py ./backup ./data/log1.txt ./data/log2.txt ./temp/cache.dat
+# Specify output file
+python duplicate_name.py ./student_database --output ./namesake.txt
 ```
 
+#### Output Format
 
-### 3. List All Files
+```
+name: xxx
+count: xxx
+ids: xxx, xxx, ...
 
-Recursively list all files under a given directory path. Useful for quickly understanding project directory structure.
-
-### Features
-
-- Recursively traverse all subdirectories
-- Option to exclude hidden files (like .DS_Store)
-- Output one file path per line, including both path and filename (relative to input directory)
-
-### Example
-
-```bash
-# List all files (excluding hidden)
-python list_all_files.py .
-
-# Include hidden files
-python list_all_files.py ./data --include-hidden
+name: yyy
+count: yyy
+ids: yyy, yyy, ...
 ```
 
 ---
 
-### 4. Extract Authors
+### 3. Filter by Recommendation Grade
 
-Extract authors from all HTML papers in a directory using `<meta name="citation_author">` tags.
+Find students with specified grade(s) from recommendation_letter.txt files.
 
-### Features
+#### Features
 
-- Automatically scan all HTML files in directory
-- Extract author names from citation_author meta tags
-- Support multiple authors per paper
-- Returns list of dicts with filename and authors
+- Filter by single grade (S, A, B, C, D, F) or multiple grades (e.g., SA for S or A)
+- Returns list of matching student folder names
 
-### Example
+#### Example
 
 ```bash
-# Extract and print authors from all HTML files
-python extract_authors.py ./papers
+# Filter students with grade S
+python filter_by_recommendation.py ./student_database S
 
-# Save to file
-python extract_authors.py ./papers --output authors.txt
+# Filter students with grade A
+python filter_by_recommendation.py ./student_database A
+
+# Filter students with grade S OR A
+python filter_by_recommendation.py ./student_database SA
+```
+
+---
+
+### 4. Filter by TOEFL Score
+
+Find students with TOEFL score >= a specified threshold.
+
+#### Features
+
+- Reads TOEFL score from basic_info.txt in each student folder
+- Filter by minimum score threshold
+- Returns list of matching student folder names
+
+#### Example
+
+```bash
+# Find students with TOEFL >= 100
+python filter_by_toefl.py ./student_database 100
+
+# Find students with TOEFL >= 90
+python filter_by_toefl.py ./student_database 90
 ```
 
 ---
@@ -110,9 +132,7 @@ python extract_authors.py ./papers --output authors.txt
 
 Below are the basic tool functions. These are atomic operations for flexible combination.
 
-**Prefer Skills over Basic Tools**: When a task matches one of the Skills above (e.g., creating multiple folders), use the corresponding Skill instead of Basic Tools. Skills are more efficient because they can perform batch operations in a single call.
-
-**Prefer List All Files over list_directory/list_files**: When you need to list files in a directory, prefer using the `list_all_files.py` skill instead of `list_directory` or `list_files` basic tools. The skill provides recursive listing with better output formatting.
+**Prefer Skills over Basic Tools**: When a task matches one of the Skills above, use the corresponding Skill instead of Basic Tools. Skills are more efficient because they can perform batch operations in a single call.
 
 **Note**: Code should be written without line breaks.
 
@@ -154,10 +174,11 @@ python run_fs_ops.py -c "await fs.read_multiple_files(['./a.txt', './b.txt'])"
 
 #### `write_file(path, content)`
 **Use Cases**:
-- Create new files
+- Create new files with **short, simple content only**
 - Overwrite existing files
 
 **⚠️ Warning**: Do NOT include triple backticks (` ``` `) in the content, as this will break command parsing.
+
 **Example**:
 ```bash
 python run_fs_ops.py -c "await fs.write_file('./new.txt', 'Hello World')"
