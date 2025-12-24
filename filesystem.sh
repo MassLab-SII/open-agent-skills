@@ -42,10 +42,13 @@
 
 # python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/customer_segmentation_setup --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/marketing_customer_analysis --models claude-sonnet-4.5 --k 1
-python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/search_filtering_operations --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/fitness_promotion_strategy --models claude-sonnet-4.5 --k 1
-# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/marketing_customer_analysis --models claude-sonnet-4.5 --k 1
 # python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/search_filtering_operations --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/fitness_promotion_strategy --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/sales_inventory_analysis --models claude-sonnet-4.5 --k 1
+python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/products_sales_analysis --models claude-sonnet-4.5 --k 1
+# python -m pipeline --exp-name test_shopping_admin --mcp playwright_webarena --tasks shopping_admin/ny_expansion_analysis --models claude-sonnet-4.5 --k 1
+
+
 
 
 # python -m pipeline --exp-name test_reddit_show --mcp playwright_webarena --tasks reddit/budget_europe_travel --models claude-sonnet-4.5 --k 1
