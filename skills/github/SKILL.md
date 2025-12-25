@@ -201,7 +201,7 @@ python issue_manager.py list owner repo --state open --labels "bug"
 - Merge a PR with squash strategy
 - Add "approved" label to a PR
   
-> [!Tips]
+> [!TIP]
 > **Respecting Original Context**: When fixing issues or conflicts in an existing PR, prefer updating and merging the original PR rather than creating a duplicate, unless explicitly instructed otherwise. This preserves the conversation history and context attached to the original PR number.
 
 **Usage**:
