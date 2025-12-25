@@ -43,7 +43,13 @@ import argparse
 import sys
 from typing import List, Optional
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    extract_sha_from_result,
+    extract_pr_number,
+    check_api_success,
+    check_merge_success,
+)
 
 
 class WorkflowBuilder:
@@ -78,28 +84,39 @@ class WorkflowBuilder:
             True if successful
         """
         async with GitHubTools() as gh:
-            branch_name = "ci/add-basic-workflow"
+            # Generate unique branch name using timestamp + random suffix to avoid conflicts
+            import time
+            import random
+            timestamp = int(time.time())
+            random_suffix = random.randint(1000, 9999)
+            branch_name = f"ci/add-basic-workflow-{timestamp}-{random_suffix}"
             
             print(f"Step 1: Creating branch '{branch_name}'")
-            await gh.create_branch(
+            branch_result = await gh.create_branch(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 from_branch=branch
             )
+            if not self._check_success(branch_result):
+                print(f"✗ Failed to create branch: {branch_result}")
+                return False
             
             print(f"Step 2: Generating workflow content")
             workflow_content = self._generate_ci_basic_workflow(triggers, branch, node_version)
             
             print(f"Step 3: Pushing workflow file")
             files = [{"path": ".github/workflows/ci.yml", "content": workflow_content}]
-            await gh.push_files(
+            push_result = await gh.push_files(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 files=files,
                 message="Add basic CI workflow"
             )
+            if not self._check_success(push_result):
+                print(f"✗ Failed to push workflow file: {push_result}")
+                return False
             
             print(f"Step 4: Creating pull request")
             pr_result = await gh.create_pull_request(
@@ -112,14 +129,20 @@ class WorkflowBuilder:
             )
             
             pr_number = self._extract_pr_number(pr_result)
+            if not pr_number:
+                print(f"✗ Failed to create PR: {pr_result}")
+                return False
             
             print(f"Step 5: Merging pull request #{pr_number}")
-            await gh.merge_pull_request(
+            merge_result = await gh.merge_pull_request(
                 owner=self.owner,
                 repo=self.repo,
                 pull_number=pr_number,
                 merge_method="squash"
             )
+            if not self._check_merge_success(merge_result):
+                print(f"✗ Failed to merge PR: {merge_result}")
+                return False
             
             print(f"✓ Successfully created basic CI workflow")
             return True
@@ -140,34 +163,44 @@ class WorkflowBuilder:
             True if successful
         """
         async with GitHubTools() as gh:
-            branch_name = "ci/add-eslint-workflow"
+            # Generate unique branch name using timestamp + random suffix to avoid conflicts
+            import time
+            import random
+            timestamp = int(time.time())
+            random_suffix = random.randint(1000, 9999)
+            branch_name = f"ci/add-eslint-workflow-{timestamp}-{random_suffix}"
             
             print(f"Step 1: Creating branch '{branch_name}'")
-            await gh.create_branch(
+            branch_result = await gh.create_branch(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 from_branch=branch
             )
+            if not self._check_success(branch_result):
+                print(f"✗ Failed to create branch: {branch_result}")
+                return False
             
             print(f"Step 2: Generating workflow and config files")
             workflow_content = self._generate_lint_workflow(triggers, branch)
             eslint_config = self._generate_eslint_config()
-            example_file = self._generate_example_file_with_errors()
             
             print(f"Step 3: Pushing files")
+            # Only push workflow and config, not example files that might conflict
             files = [
                 {"path": ".github/workflows/lint.yml", "content": workflow_content},
                 {"path": ".eslintrc.json", "content": eslint_config},
-                {"path": "src/example.js", "content": example_file}
             ]
-            await gh.push_files(
+            push_result = await gh.push_files(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 files=files,
                 message="Add ESLint workflow for code quality enforcement"
             )
+            if not self._check_success(push_result):
+                print(f"✗ Failed to push files: {push_result}")
+                return False
             
             print(f"Step 4: Creating pull request")
             pr_result = await gh.create_pull_request(
@@ -176,42 +209,25 @@ class WorkflowBuilder:
                 title="Add ESLint workflow for code quality enforcement",
                 head=branch_name,
                 base=branch,
-                body="## Summary\nAdds ESLint workflow and configuration.\n\n## Changes\n- Added .github/workflows/lint.yml\n- Added .eslintrc.json\n- Added src/example.js (with intentional errors for testing)\n\n## Testing\nThe PR intentionally includes linting errors to demonstrate the workflow."
+                body="## Summary\nAdds ESLint workflow and configuration.\n\n## Changes\n- Added .github/workflows/lint.yml\n- Added .eslintrc.json"
             )
             
             pr_number = self._extract_pr_number(pr_result)
-            print(f"Created PR #{pr_number} (will fail CI due to linting errors)")
+            if not pr_number:
+                print(f"✗ Failed to create PR: {pr_result}")
+                return False
+            print(f"Created PR #{pr_number}")
             
-            # Fix linting errors
-            print(f"Step 5: Fixing linting errors")
-            fixed_file = self._generate_example_file_fixed()
-            
-            # Get SHA of the file we just created
-            existing = await gh.get_file_contents(
-                owner=self.owner,
-                repo=self.repo,
-                path="src/example.js",
-                ref=branch_name
-            )
-            sha = self._extract_sha(existing)
-            
-            await gh.create_or_update_file(
-                owner=self.owner,
-                repo=self.repo,
-                path="src/example.js",
-                content=fixed_file,
-                message="Fix linting errors",
-                branch=branch_name,
-                sha=sha
-            )
-            
-            print(f"Step 6: Merging pull request #{pr_number}")
-            await gh.merge_pull_request(
+            print(f"Step 5: Merging pull request #{pr_number}")
+            merge_result = await gh.merge_pull_request(
                 owner=self.owner,
                 repo=self.repo,
                 pull_number=pr_number,
                 merge_method="squash"
             )
+            if not self._check_merge_success(merge_result):
+                print(f"✗ Failed to merge PR: {merge_result}")
+                return False
             
             print(f"✓ Successfully created linting workflow")
             return True
@@ -236,28 +252,39 @@ class WorkflowBuilder:
             True if successful
         """
         async with GitHubTools() as gh:
-            branch_name = "ci/add-scheduled-workflow"
+            # Generate unique branch name using timestamp + random suffix to avoid conflicts
+            import time
+            import random
+            timestamp = int(time.time())
+            random_suffix = random.randint(1000, 9999)
+            branch_name = f"ci/add-scheduled-workflow-{timestamp}-{random_suffix}"
             
             print(f"Step 1: Creating branch '{branch_name}'")
-            await gh.create_branch(
+            branch_result = await gh.create_branch(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 from_branch=branch
             )
+            if not self._check_success(branch_result):
+                print(f"✗ Failed to create branch: {branch_result}")
+                return False
             
             print(f"Step 2: Generating workflow content")
             workflow_content = self._generate_scheduled_workflow(cron, script, workflow_name)
             
             print(f"Step 3: Pushing workflow file")
             files = [{"path": ".github/workflows/scheduled.yml", "content": workflow_content}]
-            await gh.push_files(
+            push_result = await gh.push_files(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 files=files,
                 message=f"Add {workflow_name.lower()}"
             )
+            if not self._check_success(push_result):
+                print(f"✗ Failed to push workflow file: {push_result}")
+                return False
             
             print(f"Step 4: Creating and merging pull request")
             pr_result = await gh.create_pull_request(
@@ -270,13 +297,19 @@ class WorkflowBuilder:
             )
             
             pr_number = self._extract_pr_number(pr_result)
+            if not pr_number:
+                print(f"✗ Failed to create PR: {pr_result}")
+                return False
             
-            await gh.merge_pull_request(
+            merge_result = await gh.merge_pull_request(
                 owner=self.owner,
                 repo=self.repo,
                 pull_number=pr_number,
                 merge_method="squash"
             )
+            if not self._check_merge_success(merge_result):
+                print(f"✗ Failed to merge PR: {merge_result}")
+                return False
             
             print(f"✓ Successfully created scheduled workflow")
             return True
@@ -402,78 +435,19 @@ console.log(message);
 
     def _extract_pr_number(self, result) -> int:
         """Extract PR number from result, handling MCP response format"""
-        import json
-        import re
-        
-        def extract_from_data(data: dict) -> int:
-            if "number" in data:
-                return data.get("number", 0)
-            url = data.get("url", "") or data.get("html_url", "")
-            if url:
-                match = re.search(r'/pull/(\d+)', url)
-                if match:
-                    return int(match.group(1))
-            return 0
-        
-        if isinstance(result, dict):
-            num = extract_from_data(result)
-            if num:
-                return num
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                num = extract_from_data(parsed)
-                                if num:
-                                    return num
-                        except json.JSONDecodeError:
-                            match = re.search(r'"number"\s*:\s*(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-                            match = re.search(r'/pull/(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    num = extract_from_data(parsed)
-                    if num:
-                        return num
-            except json.JSONDecodeError:
-                pass
-            match = re.search(r'"number"\s*:\s*(\d+)', result)
-            if match:
-                return int(match.group(1))
-            match = re.search(r'/pull/(\d+)', result)
-            if match:
-                return int(match.group(1))
-        return 0
+        return extract_pr_number(result)
 
     def _extract_sha(self, result) -> str:
         """Extract SHA from get_file_contents result."""
-        import json
-        if isinstance(result, dict):
-            # Direct sha field
-            if "sha" in result:
-                return result.get("sha")
-            # Try to extract from MCP text content (JSON string)
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return parsed.get("sha")
-                        except:
-                            pass
-        return None
+        return extract_sha_from_result(result)
+
+    def _check_success(self, result) -> bool:
+        """Check if operation was successful, handling MCP response format"""
+        return check_api_success(result)
+
+    def _check_merge_success(self, result) -> bool:
+        """Check if merge was successful, handling MCP response format"""
+        return check_merge_success(result)
 
 
 async def main():

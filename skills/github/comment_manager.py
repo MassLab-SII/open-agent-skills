@@ -5,14 +5,14 @@ Comment Manager Script
 ======================
 
 Manage comments on GitHub Issues and Pull Requests.
-Supports adding regular comments and review comments.
+Supports adding regular comments and PR review comments.
 
 Usage:
     python comment_manager.py <command> <owner> <repo> [options]
 
 Commands:
     add         Add a comment to an issue or PR
-    review      Add a review comment to a PR
+    review      Submit a PR review (COMMENT/APPROVE/REQUEST_CHANGES)
 
 Examples:
     # Add comment to an issue
@@ -21,19 +21,22 @@ Examples:
     # Add comment to a PR
     python comment_manager.py add owner repo --pr 42 --body "LGTM!"
     
-    # Add review comment with approval
+    # Approve a PR with comment
     python comment_manager.py review owner repo --pr 42 --body "Great work!" --event APPROVE
     
-    # Request changes
+    # Request changes on a PR
     python comment_manager.py review owner repo --pr 42 --body "Please fix..." --event REQUEST_CHANGES
 """
 
 import asyncio
 import argparse
 import sys
-from typing import Optional
+from typing import Any
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    check_api_success,
+)
 
 
 class CommentManager:
@@ -62,7 +65,7 @@ class CommentManager:
         Args:
             number: Issue or PR number
             body: Comment text
-            is_pr: True if target is a PR (currently same API)
+            is_pr: True if target is a PR (uses same API)
 
         Returns:
             True if successful
@@ -87,14 +90,14 @@ class CommentManager:
             
             return success
 
-    async def add_review_comment(
+    async def add_review(
         self,
         pr_number: int,
         body: str,
         event: str = "COMMENT"
     ) -> bool:
         """
-        Add a review comment to a pull request.
+        Submit a review on a pull request.
 
         Args:
             pr_number: Pull request number
@@ -105,7 +108,7 @@ class CommentManager:
             True if successful
         """
         async with GitHubTools() as gh:
-            print(f"Adding review comment to PR #{pr_number} (event: {event})")
+            print(f"Submitting review on PR #{pr_number} (event: {event})")
             
             result = await gh.pull_request_review_write(
                 owner=self.owner,
@@ -126,51 +129,13 @@ class CommentManager:
                 }.get(event, "reviewed")
                 print(f"✓ Successfully {event_msg} PR #{pr_number}")
             else:
-                print(f"✗ Failed to add review comment: {result}")
+                print(f"✗ Failed to submit review: {result}")
             
             return success
 
-    def _check_success(self, result) -> bool:
-        """Check if operation was successful, handling MCP response format"""
-        if not result:
-            return False
-        
-        def check_data(data: dict) -> bool:
-            if "error" in data or data.get("isError"):
-                return False
-            return True
-        
-        if isinstance(result, dict):
-            # Check for MCP format first
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            import json
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return check_data(parsed)
-                        except json.JSONDecodeError:
-                            text_lower = text.lower()
-                            if "error" in text_lower or "failed" in text_lower:
-                                return False
-                            return True
-            return check_data(result)
-        if isinstance(result, str):
-            try:
-                import json
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    return check_data(parsed)
-            except json.JSONDecodeError:
-                pass
-            result_lower = result.lower()
-            if "error" in result_lower or "failed" in result_lower:
-                return False
-            return True
-        return True
+    def _check_success(self, result: Any) -> bool:
+        """Check if operation was successful"""
+        return check_api_success(result)
 
 
 async def main():
@@ -186,7 +151,7 @@ Examples:
   # Add comment to a PR
   python comment_manager.py add owner repo --pr 42 --body "LGTM!"
   
-  # Add review comment with approval
+  # Approve a PR
   python comment_manager.py review owner repo --pr 42 --body "Great work!" --event APPROVE
   
   # Request changes
@@ -197,7 +162,7 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     
     # Command: add
-    add_parser = subparsers.add_parser("add", help="Add a comment")
+    add_parser = subparsers.add_parser("add", help="Add a comment to issue or PR")
     add_parser.add_argument("owner", help="Repository owner")
     add_parser.add_argument("repo", help="Repository name")
     add_parser.add_argument("--issue", type=int, help="Issue number")
@@ -205,7 +170,7 @@ Examples:
     add_parser.add_argument("--body", required=True, help="Comment text")
     
     # Command: review
-    review_parser = subparsers.add_parser("review", help="Add a review comment")
+    review_parser = subparsers.add_parser("review", help="Submit a PR review")
     review_parser.add_argument("owner", help="Repository owner")
     review_parser.add_argument("repo", help="Repository name")
     review_parser.add_argument("--pr", type=int, required=True, help="Pull request number")
@@ -213,7 +178,7 @@ Examples:
     review_parser.add_argument("--event", 
                                choices=["COMMENT", "APPROVE", "REQUEST_CHANGES"],
                                default="COMMENT",
-                               help="Review event type")
+                               help="Review event type (default: COMMENT)")
     
     args = parser.parse_args()
     
@@ -236,7 +201,7 @@ Examples:
             sys.exit(0 if success else 1)
             
         elif args.command == "review":
-            success = await manager.add_review_comment(
+            success = await manager.add_review(
                 pr_number=args.pr,
                 body=args.body,
                 event=args.event

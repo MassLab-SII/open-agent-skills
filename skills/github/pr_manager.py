@@ -6,8 +6,7 @@ PR Manager Script
 
 Manage Pull Request lifecycle: create, merge, close, and update.
 Supports creating PRs from branches and immediate merging with different strategies.
-
-Note: For adding comments to PRs, use comment_manager.py instead.
+Now includes label management (add/remove labels) to enable atomic PR + Label operations.
 
 Usage:
     python pr_manager.py <command> <owner> <repo> [options]
@@ -16,7 +15,7 @@ Commands:
     create      Create a new pull request
     merge       Merge an existing pull request
     close       Close a pull request without merging
-    update      Update pull request details
+    update      Update pull request details (title, body, state, labels)
 
 Examples:
     # Create a PR
@@ -31,17 +30,29 @@ Examples:
     # Close PR without merging
     python pr_manager.py close owner repo --number 42
     
-    # Update PR
+    # Update PR title/body
     python pr_manager.py update owner repo --number 42 --title "New Title" --body "Updated description"
+    
+    # Add labels to a PR
+    python pr_manager.py update owner repo --number 42 --add-labels "reviewed,approved"
+    
+    # Remove labels from a PR
+    python pr_manager.py update owner repo --number 42 --remove-labels "needs-review"
 """
 
 import asyncio
 import argparse
 import json
 import sys
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    parse_mcp_result,
+    extract_pr_number,
+    check_api_success,
+    check_merge_success,
+)
 
 
 class PRManager:
@@ -195,179 +206,136 @@ class PRManager:
         pr_number: int,
         title: Optional[str] = None,
         body: Optional[str] = None,
-        state: Optional[str] = None
+        state: Optional[str] = None,
+        add_labels: Optional[List[str]] = None,
+        remove_labels: Optional[List[str]] = None
     ) -> bool:
         """
         Update pull request details.
+
+        Note: GitHub API requires separate calls for PR fields vs labels.
+        Labels are managed via the Issues API (PRs are a type of Issue).
+        This method handles both atomically where possible.
 
         Args:
             pr_number: Pull request number
             title: New title
             body: New description
             state: New state (open/closed)
+            add_labels: List of labels to add (optional)
+            remove_labels: List of labels to remove (optional)
 
         Returns:
-            True if successful
+            True if all operations successful
         """
         async with GitHubTools() as gh:
             print(f"Updating PR #{pr_number}")
             
-            result = await gh.update_pull_request(
-                owner=self.owner,
-                repo=self.repo,
-                pull_number=pr_number,
-                title=title,
-                body=body,
-                state=state
-            )
+            # Determine what operations are needed
+            needs_pr_update = title is not None or body is not None or state is not None
+            needs_label_update = add_labels or remove_labels
             
-            success = self._check_success(result)
+            # Fetch PR details if we need labels or need to preserve title for label update
+            pr_data = None
+            if needs_label_update:
+                pr_detail = await gh.pull_request_read(
+                    owner=self.owner,
+                    repo=self.repo,
+                    pull_number=pr_number,
+                    method="get"
+                )
+                pr_data = self._parse_result(pr_detail)
+                
+                if not isinstance(pr_data, dict):
+                    print(f"✗ Failed to fetch PR #{pr_number} details")
+                    return False
             
-            if success:
-                print(f"✓ Successfully updated PR #{pr_number}")
+            # Calculate final labels if label update is needed
+            final_labels = None
+            if needs_label_update:
+                existing_labels = [
+                    l.get("name") if isinstance(l, dict) else str(l)
+                    for l in pr_data.get("labels", [])
+                ]
+                
+                # Add new labels
+                if add_labels:
+                    existing_labels = list(set(existing_labels + add_labels))
+                    print(f"  Adding labels: {add_labels}")
+                
+                # Remove specified labels
+                if remove_labels:
+                    existing_labels = [l for l in existing_labels if l not in remove_labels]
+                    print(f"  Removing labels: {remove_labels}")
+                
+                final_labels = existing_labels
+            
+            # Strategy: If only updating labels (no title/body/state), use issue_write alone
+            # If updating PR fields + labels, we need two API calls (GitHub limitation)
+            
+            operations_performed = []
+            
+            # Update title/body/state if provided (use update_pull_request)
+            if needs_pr_update:
+                result = await gh.update_pull_request(
+                    owner=self.owner,
+                    repo=self.repo,
+                    pull_number=pr_number,
+                    title=title,
+                    body=body,
+                    state=state
+                )
+                if not self._check_success(result):
+                    print(f"✗ Failed to update PR #{pr_number} title/body/state")
+                    return False
+                operations_performed.append("title/body/state")
+            
+            # Update labels if requested (use issue_write - GitHub treats PRs as Issues for labels)
+            if final_labels is not None:
+                # Get PR title: use new title if provided, otherwise use existing
+                pr_title = title if title is not None else pr_data.get("title", "")
+                if not pr_title:
+                    print(f"✗ Cannot update labels: PR #{pr_number} has no title")
+                    return False
+                
+                # Use issue_write for label operations (GitHub API requirement)
+                result = await gh.issue_write(
+                    owner=self.owner,
+                    repo=self.repo,
+                    title=pr_title,
+                    issue_number=pr_number,
+                    labels=final_labels,
+                    method="update"
+                )
+                if not self._check_success(result):
+                    print(f"✗ Failed to update PR #{pr_number} labels")
+                    # Note: If PR update succeeded but label update failed, we have partial success
+                    if operations_performed:
+                        print(f"  Warning: PR fields were updated but labels failed")
+                    return False
+                operations_performed.append("labels")
+            
+            if operations_performed:
+                print(f"✓ Successfully updated PR #{pr_number} ({', '.join(operations_performed)})")
             else:
-                print(f"✗ Failed to update PR #{pr_number}")
-            
-            return success
+                print(f"  No changes requested for PR #{pr_number}")
+            return True
+
+    def _parse_result(self, result: Any) -> Any:
+        """Parse API result, handling MCP response format"""
+        return parse_mcp_result(result)
 
     def _extract_pr_number(self, result: Any) -> int:
         """Extract PR number from API result"""
-        import re
-        
-        def extract_from_data(data: dict) -> int:
-            """Extract PR number from parsed data dict"""
-            # Direct number field
-            if "number" in data:
-                return data.get("number", 0)
-            # Extract from URL: https://github.com/owner/repo/pull/51
-            url = data.get("url", "") or data.get("html_url", "")
-            if url:
-                match = re.search(r'/pull/(\d+)', url)
-                if match:
-                    return int(match.group(1))
-            return 0
-        
-        if isinstance(result, dict):
-            # Direct dict with number or url
-            num = extract_from_data(result)
-            if num:
-                return num
-            # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                num = extract_from_data(parsed)
-                                if num:
-                                    return num
-                        except json.JSONDecodeError:
-                            # Try regex on raw text
-                            match = re.search(r'"number"\s*:\s*(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-                            match = re.search(r'/pull/(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    num = extract_from_data(parsed)
-                    if num:
-                        return num
-            except json.JSONDecodeError:
-                pass
-            # Try regex on raw string
-            match = re.search(r'"number"\s*:\s*(\d+)', result)
-            if match:
-                return int(match.group(1))
-            match = re.search(r'/pull/(\d+)', result)
-            if match:
-                return int(match.group(1))
-        return 0
+        return extract_pr_number(result)
 
     def _check_merge_success(self, result: Any) -> bool:
         """Check if merge was successful"""
-        def check_data(data: dict) -> bool:
-            """Check merge success from parsed data"""
-            return data.get("merged", False) or "sha" in data
-        
-        if isinstance(result, dict):
-            # Direct dict check
-            if check_data(result):
-                return True
-            # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict) and check_data(parsed):
-                                return True
-                        except json.JSONDecodeError:
-                            # Check raw text
-                            if '"merged":true' in text.lower() or '"sha"' in text:
-                                return True
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict) and check_data(parsed):
-                    return True
-            except json.JSONDecodeError:
-                pass
-            # Check raw string
-            result_lower = result.lower()
-            return '"merged":true' in result_lower or '"sha"' in result_lower
-        return False
+        return check_merge_success(result)
 
     def _check_success(self, result: Any) -> bool:
         """Check if operation was successful, handling MCP response format"""
-        if not result:
-            return False
-        
-        def check_data(data: dict) -> bool:
-            """Check success from parsed data"""
-            if "error" in data or data.get("isError"):
-                return False
-            return True
-        
-        if isinstance(result, dict):
-            # Check for MCP format first
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return check_data(parsed)
-                        except json.JSONDecodeError:
-                            # Check raw text for errors
-                            text_lower = text.lower()
-                            if "error" in text_lower or "failed" in text_lower:
-                                return False
-                            return True
-            # Direct dict (not MCP format)
-            return check_data(result)
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    return check_data(parsed)
-            except json.JSONDecodeError:
-                pass
-            result_lower = result.lower()
-            if "error" in result_lower or "failed" in result_lower:
-                return False
-            return True
-        return True
+        return check_api_success(result)
 
 
 async def main():
@@ -434,6 +402,8 @@ Note: For adding comments to PRs, use comment_manager.py instead.
     update_parser.add_argument("--title", help="New title")
     update_parser.add_argument("--body", help="New description")
     update_parser.add_argument("--state", choices=["open", "closed"], help="New state")
+    update_parser.add_argument("--add-labels", help="Comma-separated labels to add")
+    update_parser.add_argument("--remove-labels", help="Comma-separated labels to remove")
     
     args = parser.parse_args()
     
@@ -470,11 +440,15 @@ Note: For adding comments to PRs, use comment_manager.py instead.
             sys.exit(0 if success else 1)
             
         elif args.command == "update":
+            add_labels = [l.strip() for l in args.add_labels.split(",")] if args.add_labels else None
+            remove_labels = [l.strip() for l in args.remove_labels.split(",")] if args.remove_labels else None
             success = await manager.update_pr(
                 pr_number=args.number,
                 title=args.title,
                 body=args.body,
-                state=args.state
+                state=args.state,
+                add_labels=add_labels,
+                remove_labels=remove_labels
             )
             sys.exit(0 if success else 1)
             

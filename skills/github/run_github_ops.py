@@ -47,33 +47,63 @@ async def run_operations(code: str):
     
     Args:
         code: Python code containing GitHub operations (await github.xxx calls)
+        
+    Note:
+        This function uses eval/exec for flexibility. It's designed for local CLI use
+        by developers, not for processing untrusted input. The exec_globals is restricted
+        to only expose the github client and asyncio module.
     """
     async with GitHubTools(timeout=300) as github:
-        exec_globals = {"github": github, "asyncio": asyncio}
+        # Restricted globals - only expose what's needed for GitHub operations
+        # This limits the attack surface but doesn't make it fully safe for untrusted input
+        exec_globals = {
+            "github": github, 
+            "asyncio": asyncio,
+            "print": print,  # Allow print for debugging
+            "__builtins__": {
+                "print": print,
+                "str": str,
+                "int": int,
+                "float": float,
+                "bool": bool,
+                "list": list,
+                "dict": dict,
+                "len": len,
+                "range": range,
+                "enumerate": enumerate,
+                "True": True,
+                "False": False,
+                "None": None,
+            }
+        }
         
         lines = [line.strip() for line in code.strip().split('\n') 
                  if line.strip() and not line.strip().startswith('#')]
         
         for line in lines:
-            if line.startswith('await '):
-                expr = line[6:]
-                result = await eval(expr, exec_globals)
-                if result:
-                    print(f"Result: {result}")
-            elif line.startswith('result = await '):
-                expr = line[15:]
-                exec_globals['result'] = await eval(expr, exec_globals)
-                print(f"Stored result")
-            elif '=' in line and 'await' in line:
-                var_name, expr = line.split('=', 1)
-                var_name = var_name.strip()
-                expr = expr.strip()
-                if expr.startswith('await '):
-                    expr = expr[6:]
-                exec_globals[var_name] = await eval(expr, exec_globals)
-                print(f"Stored {var_name}")
-            else:
-                exec(line, exec_globals)
+            try:
+                if line.startswith('await '):
+                    expr = line[6:]
+                    result = await eval(expr, exec_globals)
+                    if result:
+                        print(f"Result: {result}")
+                elif line.startswith('result = await '):
+                    expr = line[15:]
+                    exec_globals['result'] = await eval(expr, exec_globals)
+                    print(f"Stored result")
+                elif '=' in line and 'await' in line:
+                    var_name, expr = line.split('=', 1)
+                    var_name = var_name.strip()
+                    expr = expr.strip()
+                    if expr.startswith('await '):
+                        expr = expr[6:]
+                    exec_globals[var_name] = await eval(expr, exec_globals)
+                    print(f"Stored {var_name}")
+                else:
+                    exec(line, exec_globals)
+            except Exception as e:
+                print(f"Error executing line '{line}': {e}")
+                raise
 
 
 def main():

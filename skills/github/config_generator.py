@@ -32,7 +32,11 @@ import json
 import sys
 from typing import List, Optional
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    extract_sha_from_result,
+    check_api_success,
+)
 
 
 class ConfigGenerator:
@@ -51,8 +55,8 @@ class ConfigGenerator:
 
     async def create_eslint_config(
         self,
-        extends: List[str] = None,
-        rules: List[str] = None,
+        extends: Optional[List[str]] = None,
+        rules: Optional[List[str]] = None,
         branch: str = "main"
     ) -> bool:
         """
@@ -71,19 +75,29 @@ class ConfigGenerator:
             
             config_content = self._generate_eslint_config(extends, rules)
             
+            # Check if file exists
+            existing = await gh.get_file_contents(
+                owner=self.owner,
+                repo=self.repo,
+                path=".eslintrc.json",
+                ref=branch
+            )
+            sha = self._extract_sha(existing)
+            
             result = await gh.create_or_update_file(
                 owner=self.owner,
                 repo=self.repo,
                 path=".eslintrc.json",
                 content=config_content,
                 message="Add ESLint configuration",
-                branch=branch
+                branch=branch,
+                sha=sha
             )
             
             success = self._check_success(result)
             
             if success:
-                print("✓ ESLint configuration created")
+                print("✓ ESLint configuration created at .eslintrc.json")
             else:
                 print(f"✗ Failed to create ESLint config: {result}")
             
@@ -91,11 +105,11 @@ class ConfigGenerator:
 
     async def create_issue_templates(
         self,
-        types: List[str] = None,
+        types: Optional[List[str]] = None,
         branch: str = "main"
     ) -> bool:
         """
-        Create Issue templates.
+        Create Issue templates. Will update existing templates if they exist.
 
         Args:
             types: List of template types (bug, feature, maintenance)
@@ -106,7 +120,7 @@ class ConfigGenerator:
         """
         async with GitHubTools() as gh:
             if types is None:
-                types = ["bug", "feature", "maintenance"]
+                types = ["bug", "feature"]
             
             print(f"Creating Issue templates: {types}")
             
@@ -130,18 +144,22 @@ class ConfigGenerator:
                     "content": self._generate_maintenance_template()
                 })
             
+            # push_files handles both create and update automatically
+            # It will overwrite existing files, which is the expected behavior for templates
             result = await gh.push_files(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch,
                 files=files,
-                message="Add Issue templates"
+                message="Add/Update Issue templates"
             )
             
             success = self._check_success(result)
             
             if success:
-                print(f"✓ Created {len(files)} Issue templates")
+                print(f"✓ Created/Updated {len(files)} Issue templates")
+                for f in files:
+                    print(f"  - {f['path']}")
             else:
                 print(f"✗ Failed to create Issue templates: {result}")
             
@@ -162,25 +180,35 @@ class ConfigGenerator:
             
             template_content = self._generate_pr_template()
             
+            # Check if file exists
+            existing = await gh.get_file_contents(
+                owner=self.owner,
+                repo=self.repo,
+                path=".github/PULL_REQUEST_TEMPLATE.md",
+                ref=branch
+            )
+            sha = self._extract_sha(existing)
+            
             result = await gh.create_or_update_file(
                 owner=self.owner,
                 repo=self.repo,
                 path=".github/PULL_REQUEST_TEMPLATE.md",
                 content=template_content,
                 message="Add Pull Request template",
-                branch=branch
+                branch=branch,
+                sha=sha
             )
             
             success = self._check_success(result)
             
             if success:
-                print("✓ PR template created")
+                print("✓ PR template created at .github/PULL_REQUEST_TEMPLATE.md")
             else:
                 print(f"✗ Failed to create PR template: {result}")
             
             return success
 
-    def _generate_eslint_config(self, extends: List[str] = None, rules: List[str] = None) -> str:
+    def _generate_eslint_config(self, extends: Optional[List[str]] = None, rules: Optional[List[str]] = None) -> str:
         """Generate ESLint configuration JSON"""
         extends = extends or ["eslint:recommended"]
         
@@ -210,6 +238,10 @@ class ConfigGenerator:
                     config["rules"]["quotes"] = ["error", "single"]
                 elif rule == "indent":
                     config["rules"]["indent"] = ["error", 2]
+                elif rule == "no-var":
+                    config["rules"]["no-var"] = "error"
+                elif rule == "prefer-const":
+                    config["rules"]["prefer-const"] = "error"
         
         return json.dumps(config, indent=2)
 
@@ -243,8 +275,8 @@ If applicable, add screenshots to help explain your problem.
 
 ## Environment
 - OS: [e.g. macOS, Windows, Linux]
-- Node Version: [e.g. 18.0.0]
-- Package Version: [e.g. 1.0.0]
+- Browser: [e.g. Chrome, Safari]
+- Version: [e.g. 1.0.0]
 
 ## Additional Context
 Add any other context about the problem here.
@@ -344,47 +376,13 @@ Describe the tests that you ran to verify your changes.
 - [ ] New and existing unit tests pass locally with my changes
 '''
 
+    def _extract_sha(self, result) -> Optional[str]:
+        """Extract SHA from result"""
+        return extract_sha_from_result(result)
+
     def _check_success(self, result) -> bool:
-        """Check if operation was successful, handling MCP response format"""
-        if not result:
-            return False
-        
-        def check_data(data: dict) -> bool:
-            if "error" in data or data.get("isError"):
-                return False
-            return True
-        
-        if isinstance(result, dict):
-            # Check for MCP format first
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            import json
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return check_data(parsed)
-                        except json.JSONDecodeError:
-                            text_lower = text.lower()
-                            if "error" in text_lower or "failed" in text_lower:
-                                return False
-                            return True
-            return check_data(result)
-        if isinstance(result, str):
-            try:
-                import json
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    return check_data(parsed)
-            except json.JSONDecodeError:
-                pass
-            result_lower = result.lower()
-            if "error" in result_lower or "failed" in result_lower:
-                return False
-            return True
-        return True
+        """Check if operation was successful"""
+        return check_api_success(result)
 
 
 async def main():
@@ -411,16 +409,16 @@ Examples:
     eslint_parser = subparsers.add_parser("eslint", help="Create ESLint configuration")
     eslint_parser.add_argument("owner", help="Repository owner")
     eslint_parser.add_argument("repo", help="Repository name")
-    eslint_parser.add_argument("--extends", help="Comma-separated configs to extend")
-    eslint_parser.add_argument("--rules", help="Comma-separated rules to enable")
+    eslint_parser.add_argument("--extends", help="Comma-separated configs to extend (default: eslint:recommended)")
+    eslint_parser.add_argument("--rules", help="Comma-separated rules to enable (semi,quotes,indent,no-var,prefer-const)")
     eslint_parser.add_argument("--branch", default="main", help="Target branch")
     
     # Command: issue-templates
     issue_parser = subparsers.add_parser("issue-templates", help="Create Issue templates")
     issue_parser.add_argument("owner", help="Repository owner")
     issue_parser.add_argument("repo", help="Repository name")
-    issue_parser.add_argument("--types", default="bug,feature,maintenance", 
-                             help="Comma-separated template types")
+    issue_parser.add_argument("--types", default="bug,feature", 
+                             help="Comma-separated template types: bug,feature,maintenance")
     issue_parser.add_argument("--branch", default="main", help="Target branch")
     
     # Command: pr-template

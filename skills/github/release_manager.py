@@ -20,8 +20,8 @@ Examples:
     # Prepare a release
     python release_manager.py prepare owner repo --version "1.1.0" --from develop
     
-    # Bump version in Cargo.toml
-    python release_manager.py bump-version owner repo --file "Cargo.toml" --version "1.1.0" --branch release/v1.1.0
+    # Bump version in package.json
+    python release_manager.py bump-version owner repo --file "package.json" --version "1.1.0" --branch release/v1.1.0
     
     # Generate changelog
     python release_manager.py changelog owner repo --since "2024-01-01" --output "CHANGELOG.md"
@@ -35,9 +35,18 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    parse_mcp_result,
+    extract_sha_from_result,
+    extract_file_content,
+    extract_pr_number,
+    check_api_success,
+    check_merge_success,
+)
 
 
 class ReleaseManager:
@@ -73,19 +82,23 @@ class ReleaseManager:
             branch_name = f"release/v{version}"
             
             print(f"Step 1: Creating release branch '{branch_name}' from '{from_branch}'")
-            await gh.create_branch(
+            result = await gh.create_branch(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
                 from_branch=from_branch
             )
             
+            if not self._check_success(result):
+                print(f"✗ Failed to create branch: {result}")
+                return False
+            
             print(f"Step 2: Generating changelog")
             changelog_content = await self._generate_changelog_content(gh, version)
             
             print(f"Step 3: Pushing changelog to release branch")
             files = [{"path": "CHANGELOG.md", "content": changelog_content}]
-            await gh.push_files(
+            result = await gh.push_files(
                 owner=self.owner,
                 repo=self.repo,
                 branch=branch_name,
@@ -93,7 +106,14 @@ class ReleaseManager:
                 message=f"Add changelog for v{version}"
             )
             
+            if not self._check_success(result):
+                print(f"✗ Failed to push changelog: {result}")
+                return False
+            
             print(f"✓ Release v{version} prepared on branch '{branch_name}'")
+            print(f"  Next steps:")
+            print(f"  1. Update version: python release_manager.py bump-version {self.owner} {self.repo} --file package.json --version {version} --branch {branch_name}")
+            print(f"  2. Finish release: python release_manager.py finish {self.owner} {self.repo} --version {version}")
             return True
 
     async def bump_version(
@@ -106,7 +126,7 @@ class ReleaseManager:
         Update version number in a file.
 
         Args:
-            file_path: Path to version file (e.g., Cargo.toml, package.json)
+            file_path: Path to version file (e.g., Cargo.toml, package.json, pyproject.toml)
             version: New version number
             branch: Target branch
 
@@ -134,6 +154,8 @@ class ReleaseManager:
                 new_content = self._update_cargo_version(current_content, version)
             elif file_path.endswith("package.json"):
                 new_content = self._update_package_json_version(current_content, version)
+            elif file_path.endswith("pyproject.toml"):
+                new_content = self._update_pyproject_version(current_content, version)
             else:
                 # Generic version replacement
                 new_content = re.sub(
@@ -159,7 +181,7 @@ class ReleaseManager:
             success = self._check_success(result)
             
             if success:
-                print(f"✓ Version updated to {version}")
+                print(f"✓ Version updated to {version} in {file_path}")
             else:
                 print(f"✗ Failed to update version: {result}")
             
@@ -174,6 +196,7 @@ class ReleaseManager:
     ) -> bool:
         """
         Generate changelog from commit history.
+        Appends new entries to existing changelog if present.
 
         Args:
             output_path: Output file path
@@ -191,22 +214,23 @@ class ReleaseManager:
             commits_result = await gh.list_commits(
                 owner=self.owner,
                 repo=self.repo,
+                sha=branch,
                 since=since,
                 until=until,
                 per_page=100
             )
             
-            commits = self._parse_result(commits_result)
+            commits = self._parse_commits(commits_result)
             if not commits:
                 print("No commits found")
                 return False
             
             print(f"Found {len(commits)} commits")
             
-            # Generate changelog content
-            changelog_content = self._format_changelog(commits, since, until)
+            # Generate new changelog content
+            new_changelog_section = self._format_changelog(commits, since, until)
             
-            # Check if file exists
+            # Check if file exists and get existing content
             existing = await gh.get_file_contents(
                 owner=self.owner,
                 repo=self.repo,
@@ -214,6 +238,28 @@ class ReleaseManager:
                 ref=branch
             )
             sha = self._extract_sha(existing)
+            existing_content = self._extract_content(existing)
+            
+            # Merge with existing changelog if present
+            if existing_content and existing_content.strip():
+                # Insert new section after the header
+                if existing_content.startswith("# Changelog"):
+                    # Find the end of the header line
+                    header_end = existing_content.find("\n")
+                    if header_end != -1:
+                        # Remove the "# Changelog" header from new section since it exists
+                        new_section_without_header = new_changelog_section.replace("# Changelog\n\n", "")
+                        changelog_content = (
+                            existing_content[:header_end + 1] + 
+                            "\n" + new_section_without_header + 
+                            existing_content[header_end + 1:]
+                        )
+                    else:
+                        changelog_content = new_changelog_section + "\n\n---\n\n" + existing_content
+                else:
+                    changelog_content = new_changelog_section + "\n\n---\n\n" + existing_content
+            else:
+                changelog_content = new_changelog_section
             
             # Create/update changelog
             result = await gh.create_or_update_file(
@@ -238,7 +284,8 @@ class ReleaseManager:
     async def finish_release(
         self,
         version: str,
-        target: str = "main"
+        target: str = "main",
+        merge_method: str = "squash"
     ) -> bool:
         """
         Finish release by merging to target branch.
@@ -246,6 +293,7 @@ class ReleaseManager:
         Args:
             version: Release version
             target: Target branch (default: main)
+            merge_method: Merge method (squash/merge/rebase)
 
         Returns:
             True if successful
@@ -263,7 +311,7 @@ class ReleaseManager:
                 title=f"Release v{version}",
                 head=branch_name,
                 base=target,
-                body=f"## Release v{version}\n\nMerging release branch into {target}."
+                body=f"## Release v{version}\n\nMerging release branch into {target}.\n\n### Changes\nSee CHANGELOG.md for details."
             )
             
             pr_number = self._extract_pr_number(pr_result)
@@ -275,13 +323,13 @@ class ReleaseManager:
             print(f"  Created PR #{pr_number}")
             
             # Merge PR
-            print(f"  Merging PR #{pr_number}")
+            print(f"  Merging PR #{pr_number} with method: {merge_method}")
             
             merge_result = await gh.merge_pull_request(
                 owner=self.owner,
                 repo=self.repo,
                 pull_number=pr_number,
-                merge_method="squash"
+                merge_method=merge_method
             )
             
             success = self._check_merge_success(merge_result)
@@ -301,7 +349,7 @@ class ReleaseManager:
             per_page=50
         )
         
-        commits = self._parse_result(commits_result)
+        commits = self._parse_commits(commits_result)
         return self._format_changelog(commits, version=version)
 
     def _format_changelog(
@@ -312,15 +360,13 @@ class ReleaseManager:
         version: Optional[str] = None
     ) -> str:
         """Format commits into changelog markdown"""
-        from datetime import datetime
-        
         content = "# Changelog\n\n"
         
         if version:
             date = datetime.now().strftime("%Y-%m-%d")
             content += f"## [{version}] - {date}\n\n"
         else:
-            content += f"Generated from commits"
+            content += f"## Changes"
             if since:
                 content += f" since {since}"
             if until:
@@ -335,14 +381,15 @@ class ReleaseManager:
         for commit in commits:
             commit_info = commit.get("commit", {})
             message = commit_info.get("message", "").split("\n")[0]
-            sha = commit.get("sha", "")  # Full SHA for accuracy
+            sha = commit.get("sha", "")[:7]  # Short SHA
             author = commit_info.get("author", {}).get("name", "Unknown")
             
             entry = f"- {message} ({sha}) by {author}"
             
-            if message.lower().startswith(("feat", "add", "new")):
+            msg_lower = message.lower()
+            if msg_lower.startswith(("feat", "add", "new", "feature")):
                 features.append(entry)
-            elif message.lower().startswith(("fix", "bug", "patch")):
+            elif msg_lower.startswith(("fix", "bug", "patch", "hotfix")):
                 fixes.append(entry)
             else:
                 others.append(entry)
@@ -357,7 +404,7 @@ class ReleaseManager:
         
         if others:
             content += "### Changed\n\n"
-            content += "\n".join(others[:10]) + "\n\n"  # Limit to 10
+            content += "\n".join(others[:15]) + "\n\n"  # Limit to 15
         
         return content
 
@@ -371,203 +418,91 @@ class ReleaseManager:
         )
 
     def _update_package_json_version(self, content: str, version: str) -> str:
-        """Update version in package.json"""
+        """Update version in package.json safely.
+        
+        Uses JSON parsing to ensure only the top-level version field is updated,
+        not version fields in dependencies or other nested objects.
+        """
         try:
             data = json.loads(content)
+            if "version" not in data:
+                print("Warning: No top-level 'version' field found in package.json")
             data["version"] = version
-            return json.dumps(data, indent=2)
-        except:
-            return re.sub(
-                r'("version"\s*:\s*")[^"]+(")',
-                f'\\g<1>{version}\\g<2>',
-                content
-            )
+            # Preserve formatting: detect indent from original content
+            indent = 2  # default
+            lines = content.split('\n')
+            for line in lines[1:5]:  # Check first few lines for indent
+                stripped = line.lstrip()
+                if stripped and not stripped.startswith('}'):
+                    indent = len(line) - len(stripped)
+                    break
+            return json.dumps(data, indent=indent, ensure_ascii=False)
+        except json.JSONDecodeError as e:
+            # JSON parsing failed - this is unusual for package.json
+            # Use a more careful regex that only matches top-level version
+            print(f"Warning: Could not parse package.json as JSON: {e}")
+            print("Attempting regex-based update (less safe)...")
+            
+            # Strategy: Find "version" that appears before any nested { }
+            # This regex looks for "version": "x.y.z" that is NOT inside nested braces
+            # by checking it appears early in the file (within first 500 chars typically)
+            
+            # Find the position of first "version" field
+            version_match = re.search(r'"version"\s*:\s*"[^"]*"', content)
+            if version_match:
+                # Check if this appears before any nested object (indicated by second '{')
+                first_brace = content.find('{')
+                second_brace = content.find('{', first_brace + 1)
+                
+                if second_brace == -1 or version_match.start() < second_brace:
+                    # Safe to replace - version appears before nested objects
+                    return re.sub(
+                        r'("version"\s*:\s*")[^"]+(")',
+                        f'\\g<1>{version}\\g<2>',
+                        content,
+                        count=1
+                    )
+                else:
+                    print("Error: Cannot safely update version - it may be in a nested object")
+                    print("Please fix the package.json format manually")
+                    return content  # Return unchanged to avoid corruption
+            
+            print("Error: No version field found in package.json")
+            return content
 
-    def _parse_result(self, result) -> List[Dict[str, Any]]:
+    def _update_pyproject_version(self, content: str, version: str) -> str:
+        """Update version in pyproject.toml"""
+        return re.sub(
+            r'(version\s*=\s*")[^"]+(")',
+            f'\\g<1>{version}\\g<2>',
+            content,
+            count=1
+        )
+
+    def _parse_commits(self, result) -> List[Dict[str, Any]]:
         """Parse API result, handling MCP response format"""
-        # Handle MCP format: {'content': [{'type': 'text', 'text': '...'}]}
-        if isinstance(result, dict):
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, list):
-                                return parsed
-                        except json.JSONDecodeError:
-                            pass
-            return []
-        if isinstance(result, list):
-            return result
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, list):
-                    return parsed
-            except json.JSONDecodeError:
-                pass
-        return []
+        parsed = parse_mcp_result(result)
+        return parsed if isinstance(parsed, list) else []
 
     def _extract_content(self, result) -> Optional[str]:
-        """Extract file content from result"""
-        if isinstance(result, str):
-            return result
-        if isinstance(result, dict):
-            # Handle MCP result format: {'content': [{'type': 'text', 'text': '...'}]}
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        return item.get("text", "")
-            # Fallback: try direct content field (GitHub API format)
-            content = result.get("content", "")
-            if content and isinstance(content, str):
-                # Check if it's base64 encoded (GitHub raw API)
-                import base64
-                try:
-                    return base64.b64decode(content).decode("utf-8")
-                except:
-                    return content
-        return None
+        """Extract actual file content from MCP get_file_contents result."""
+        return extract_file_content(result)
 
     def _extract_sha(self, result) -> Optional[str]:
         """Extract SHA from result"""
-        if isinstance(result, dict):
-            # Direct sha field
-            if "sha" in result:
-                return result.get("sha")
-            # Try to extract from MCP text content (JSON string)
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            import json
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return parsed.get("sha")
-                        except:
-                            pass
-        return None
+        return extract_sha_from_result(result)
 
     def _extract_pr_number(self, result) -> int:
-        """Extract PR number from result, handling MCP response format"""
-        import re
-        
-        def extract_from_data(data: dict) -> int:
-            if "number" in data:
-                return data.get("number", 0)
-            url = data.get("url", "") or data.get("html_url", "")
-            if url:
-                match = re.search(r'/pull/(\d+)', url)
-                if match:
-                    return int(match.group(1))
-            return 0
-        
-        if isinstance(result, dict):
-            num = extract_from_data(result)
-            if num:
-                return num
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                num = extract_from_data(parsed)
-                                if num:
-                                    return num
-                        except json.JSONDecodeError:
-                            match = re.search(r'"number"\s*:\s*(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-                            match = re.search(r'/pull/(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    num = extract_from_data(parsed)
-                    if num:
-                        return num
-            except json.JSONDecodeError:
-                pass
-            match = re.search(r'"number"\s*:\s*(\d+)', result)
-            if match:
-                return int(match.group(1))
-            match = re.search(r'/pull/(\d+)', result)
-            if match:
-                return int(match.group(1))
-        return 0
+        """Extract PR number from result"""
+        return extract_pr_number(result)
 
     def _check_success(self, result) -> bool:
-        """Check if operation was successful, handling MCP response format"""
-        if not result:
-            return False
-        
-        def check_data(data: dict) -> bool:
-            return "error" not in data and not data.get("isError")
-        
-        if isinstance(result, dict):
-            # Check for MCP format first
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return check_data(parsed)
-                        except json.JSONDecodeError:
-                            return "error" not in text.lower()
-            return check_data(result)
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    return check_data(parsed)
-            except json.JSONDecodeError:
-                pass
-            return "error" not in result.lower()
-        return True
+        """Check if operation was successful"""
+        return check_api_success(result)
 
     def _check_merge_success(self, result) -> bool:
-        """Check if merge was successful, handling MCP response format"""
-        def check_data(data: dict) -> bool:
-            return data.get("merged", False) or "sha" in data
-        
-        if isinstance(result, dict):
-            if check_data(result):
-                return True
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict) and check_data(parsed):
-                                return True
-                        except json.JSONDecodeError:
-                            if '"merged":true' in text.lower() or '"sha"' in text:
-                                return True
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict) and check_data(parsed):
-                    return True
-            except json.JSONDecodeError:
-                pass
-            result_lower = result.lower()
-            return '"merged":true' in result_lower or '"sha"' in result_lower
-        return False
+        """Check if merge was successful"""
+        return check_merge_success(result)
 
 
 async def main():
@@ -580,8 +515,8 @@ Examples:
   # Prepare a release
   python release_manager.py prepare owner repo --version "1.1.0" --from develop
   
-  # Bump version in Cargo.toml
-  python release_manager.py bump-version owner repo --file "Cargo.toml" --version "1.1.0"
+  # Bump version in package.json
+  python release_manager.py bump-version owner repo --file "package.json" --version "1.1.0" --branch release/v1.1.0
   
   # Generate changelog
   python release_manager.py changelog owner repo --since "2024-01-01" --output "CHANGELOG.md"
@@ -604,7 +539,7 @@ Examples:
     bump_parser = subparsers.add_parser("bump-version", help="Update version number")
     bump_parser.add_argument("owner", help="Repository owner")
     bump_parser.add_argument("repo", help="Repository name")
-    bump_parser.add_argument("--file", required=True, help="Version file path")
+    bump_parser.add_argument("--file", required=True, help="Version file path (package.json/Cargo.toml/pyproject.toml)")
     bump_parser.add_argument("--version", required=True, help="New version")
     bump_parser.add_argument("--branch", default="main", help="Target branch")
     
@@ -612,8 +547,8 @@ Examples:
     changelog_parser = subparsers.add_parser("changelog", help="Generate changelog")
     changelog_parser.add_argument("owner", help="Repository owner")
     changelog_parser.add_argument("repo", help="Repository name")
-    changelog_parser.add_argument("--since", help="Start date (ISO format)")
-    changelog_parser.add_argument("--until", help="End date (ISO format)")
+    changelog_parser.add_argument("--since", help="Start date (ISO format: YYYY-MM-DD)")
+    changelog_parser.add_argument("--until", help="End date (ISO format: YYYY-MM-DD)")
     changelog_parser.add_argument("--output", default="CHANGELOG.md", help="Output file")
     changelog_parser.add_argument("--branch", default="main", help="Target branch")
     
@@ -623,6 +558,8 @@ Examples:
     finish_parser.add_argument("repo", help="Repository name")
     finish_parser.add_argument("--version", required=True, help="Release version")
     finish_parser.add_argument("--target", default="main", help="Target branch")
+    finish_parser.add_argument("--merge-method", dest="merge_method", default="squash",
+                              choices=["squash", "merge", "rebase"], help="Merge method")
     
     args = parser.parse_args()
     
@@ -660,7 +597,8 @@ Examples:
         elif args.command == "finish":
             success = await manager.finish_release(
                 version=args.version,
-                target=args.target
+                target=args.target,
+                merge_method=args.merge_method
             )
             sys.exit(0 if success else 1)
             

@@ -5,16 +5,14 @@ Issue Manager Script
 ====================
 
 Manage GitHub Issues lifecycle: create, update, close, reopen, list, and batch operations.
-
-Note: For adding labels to issues, use label_manager.py instead.
-Note: For adding comments to issues, use comment_manager.py instead.
+Now includes label management (add/remove labels) to enable atomic Issue + Label operations.
 
 Usage:
     python issue_manager.py <command> <owner> <repo> [options]
 
 Commands:
     create      Create a new issue
-    update      Update an existing issue (title, body, state)
+    update      Update an existing issue (title, body, state, labels)
     list        List issues with filters
     close       Batch close issues based on filters
     reopen      Batch reopen closed issues matching query
@@ -29,8 +27,14 @@ Examples:
     # Update an issue
     python issue_manager.py update owner repo --number 42 --title "New Title"
     
-    # Close an issue with reason
-    python issue_manager.py update owner repo --number 42 --state closed --state-reason completed
+    # Close an issue with reason AND add a label
+    python issue_manager.py update owner repo --number 42 --state closed --state-reason completed --add-labels "wontfix"
+    
+    # Add labels to an existing issue
+    python issue_manager.py update owner repo --number 42 --add-labels "bug,priority-high"
+    
+    # Remove labels from an issue
+    python issue_manager.py update owner repo --number 42 --remove-labels "needs-triage"
     
     # Reopen a closed issue
     python issue_manager.py update owner repo --number 42 --state open --state-reason reopened
@@ -51,7 +55,14 @@ import json
 import sys
 from typing import List, Dict, Any, Optional
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    parse_mcp_result,
+    parse_mcp_search_result,
+    extract_issue_number,
+    extract_issue_id,
+    check_api_success,
+)
 
 
 class IssueManager:
@@ -68,15 +79,16 @@ class IssueManager:
         self.owner = owner
         self.repo = repo
 
-    async def close_issues_with_comments(self) -> List[int]:
+    async def close_issues_with_comments(self) -> Dict[str, List[int]]:
         """
         Close all open issues that have at least one comment.
 
         Returns:
-            List of closed issue numbers
+            Dict with 'closed' and 'failed' lists of issue numbers
         """
         async with GitHubTools() as gh:
             closed_issues = []
+            failed_issues = []
             page = 1
             
             print(f"Fetching open issues from {self.owner}/{self.repo}...")
@@ -92,7 +104,7 @@ class IssueManager:
                 )
                 
                 issues = self._parse_result(issues_result)
-                if not issues:
+                if not issues or not isinstance(issues, list):
                     break
                 
                 print(f"Processing page {page} ({len(issues)} issues)...")
@@ -108,8 +120,8 @@ class IssueManager:
                     if comments_count > 0:
                         print(f"  Closing issue #{issue_number} ({comments_count} comments)")
                         
-                        # Step 3: Close the issue
-                        await gh.issue_write(
+                        # Step 3: Close the issue and check result
+                        result = await gh.issue_write(
                             owner=self.owner,
                             repo=self.repo,
                             title=issue.get("title", ""),
@@ -117,15 +129,23 @@ class IssueManager:
                             state="closed",
                             method="update"
                         )
-                        closed_issues.append(issue_number)
+                        
+                        if self._check_success(result):
+                            closed_issues.append(issue_number)
+                        else:
+                            print(f"    ✗ Failed to close issue #{issue_number}")
+                            failed_issues.append(issue_number)
                 
                 if len(issues) < 100:
                     break
                 page += 1
             
-            return closed_issues
+            if failed_issues:
+                print(f"Warning: Failed to close {len(failed_issues)} issues: {failed_issues}")
+            
+            return {"closed": closed_issues, "failed": failed_issues}
 
-    async def reopen_issues(self, query: str) -> List[int]:
+    async def reopen_issues(self, query: str) -> Dict[str, List[int]]:
         """
         Reopen closed issues matching query.
 
@@ -133,10 +153,11 @@ class IssueManager:
             query: Search query (case-insensitive)
 
         Returns:
-            List of reopened issue numbers
+            Dict with 'reopened' and 'failed' lists of issue numbers
         """
         async with GitHubTools() as gh:
             reopened = []
+            failed = []
             
             print(f"Searching for closed issues containing '{query}'...")
             
@@ -153,7 +174,7 @@ class IssueManager:
             
             if not items:
                 print("No closed issues found matching the query.")
-                return reopened
+                return {"reopened": reopened, "failed": failed}
             
             print(f"Found {len(items)} closed issues to reopen")
             
@@ -165,7 +186,7 @@ class IssueManager:
                 print(f"  Reopening issue #{issue_number}: {item.get('title', '')[:50]}")
                 
                 # Step 2: Reopen the issue
-                await gh.issue_write(
+                result = await gh.issue_write(
                     owner=self.owner,
                     repo=self.repo,
                     title=item.get("title", ""),
@@ -173,9 +194,17 @@ class IssueManager:
                     state="open",
                     method="update"
                 )
-                reopened.append(issue_number)
+                
+                if self._check_success(result):
+                    reopened.append(issue_number)
+                else:
+                    print(f"    ✗ Failed to reopen issue #{issue_number}")
+                    failed.append(issue_number)
             
-            return reopened
+            if failed:
+                print(f"Warning: Failed to reopen {len(failed)} issues: {failed}")
+            
+            return {"reopened": reopened, "failed": failed}
 
     async def create_issue(
         self,
@@ -183,10 +212,11 @@ class IssueManager:
         body: Optional[str] = None,
         labels: Optional[List[str]] = None,
         checklist: Optional[List[str]] = None,
-        assignees: Optional[List[str]] = None
-    ) -> int:
+        assignees: Optional[List[str]] = None,
+        parent_issue: Optional[int] = None
+    ) -> Dict[str, Any]:
         """
-        Create a new issue.
+        Create a new issue, optionally as a sub-issue of a parent.
 
         Args:
             title: Issue title
@@ -194,9 +224,10 @@ class IssueManager:
             labels: List of labels
             checklist: List of checklist items
             assignees: List of assignees
+            parent_issue: Parent issue number to link this as sub-issue (optional)
 
         Returns:
-            Created issue number
+            Dict with 'number' (issue number) and 'id' (database ID)
         """
         async with GitHubTools() as gh:
             # Build body with checklist if provided
@@ -219,9 +250,54 @@ class IssueManager:
             )
             
             issue_number = self._extract_issue_number(result)
-            print(f"Created issue #{issue_number}")
+            issue_id = self._extract_issue_id(result)
             
-            return issue_number
+            # Debug: print raw result to understand the format
+            print(f"  DEBUG: Raw result type: {type(result)}")
+            print(f"  DEBUG: Raw result: {result[:200] if isinstance(result, str) else result}")
+            
+            print(f"Created issue #{issue_number} (ID: {issue_id})")
+            
+            # Link as sub-issue if parent specified
+            if parent_issue and issue_id:
+                await self.add_sub_issue(parent_issue, issue_id)
+            
+            return {"number": issue_number, "id": issue_id}
+
+    async def add_sub_issue(self, parent_number: int, sub_issue_id: int) -> bool:
+        """
+        Link an issue as a sub-issue of a parent issue.
+
+        Args:
+            parent_number: Parent issue number
+            sub_issue_id: Sub-issue database ID (not number)
+
+        Returns:
+            True if successful
+        """
+        async with GitHubTools() as gh:
+            print(f"  Linking as sub-issue to #{parent_number}...")
+            
+            result = await gh.sub_issue_write(
+                owner=self.owner,
+                repo=self.repo,
+                issue_number=parent_number,
+                method="add",
+                sub_issue_id=sub_issue_id
+            )
+            
+            # Print raw response for debugging
+            print(f"  API Response: {result}")
+            
+            # Use proper success check
+            success = self._check_success(result)
+            
+            if success:
+                print(f"  ✓ Successfully linked to parent issue #{parent_number}")
+                return True
+            else:
+                print(f"  ✗ Failed to link sub-issue to #{parent_number}")
+                return False
 
     async def update_issue(
         self,
@@ -229,7 +305,11 @@ class IssueManager:
         title: Optional[str] = None,
         body: Optional[str] = None,
         state: Optional[str] = None,
-        state_reason: Optional[str] = None
+        state_reason: Optional[str] = None,
+        add_labels: Optional[List[str]] = None,
+        remove_labels: Optional[List[str]] = None,
+        assignees: Optional[List[str]] = None,
+        milestone: Optional[int] = None
     ) -> bool:
         """
         Update an existing issue.
@@ -240,6 +320,10 @@ class IssueManager:
             body: New body (optional)
             state: New state - open/closed (optional)
             state_reason: Reason for state change - completed/not_planned/reopened (optional)
+            add_labels: List of labels to add (optional)
+            remove_labels: List of labels to remove (optional)
+            assignees: List of assignees to set (optional)
+            milestone: Milestone number (optional)
 
         Returns:
             True if successful
@@ -247,59 +331,72 @@ class IssueManager:
         async with GitHubTools() as gh:
             print(f"Updating issue #{issue_number}")
             
-            # Get current issue details if we need the title
-            current_title = title
+            # Get current issue details (needed for title preservation and existing labels)
+            issue_detail = await gh.issue_read(
+                owner=self.owner,
+                repo=self.repo,
+                issue_number=issue_number
+            )
+            issue_data = self._parse_result(issue_detail)
+            
+            if not isinstance(issue_data, dict):
+                print(f"✗ Failed to fetch issue #{issue_number} details")
+                return False
+            
+            # Get current title - use provided title or preserve existing
+            current_title = title if title is not None else issue_data.get("title", "")
             if not current_title:
-                issue_detail = await gh.issue_read(
-                    owner=self.owner,
-                    repo=self.repo,
-                    issue_number=issue_number
-                )
-                issue_data = self._parse_result(issue_detail)
-                if isinstance(issue_data, dict):
-                    current_title = issue_data.get("title", "")
+                print(f"✗ Cannot update issue #{issue_number}: no title available")
+                return False
+            
+            # Handle label modifications
+            final_labels = None
+            if add_labels or remove_labels:
+                existing_labels = [
+                    l.get("name") if isinstance(l, dict) else str(l)
+                    for l in issue_data.get("labels", [])
+                ]
+                
+                # Add new labels
+                if add_labels:
+                    existing_labels = list(set(existing_labels + add_labels))
+                    print(f"  Adding labels: {add_labels}")
+                
+                # Remove specified labels
+                if remove_labels:
+                    existing_labels = [l for l in existing_labels if l not in remove_labels]
+                    print(f"  Removing labels: {remove_labels}")
+                
+                final_labels = existing_labels
             
             result = await gh.issue_write(
                 owner=self.owner,
                 repo=self.repo,
-                title=current_title or "",
+                title=current_title,
                 body=body,
                 issue_number=issue_number,
                 state=state,
                 state_reason=state_reason,
+                labels=final_labels,
+                assignees=assignees,
+                milestone=milestone,
                 method="update"
             )
             
             success = self._check_success(result)
             
             if success:
-                action = f"closed ({state_reason})" if state == "closed" else f"updated"
+                action = f"closed ({state_reason})" if state == "closed" else "updated"
                 print(f"✓ Issue #{issue_number} {action}")
             else:
                 print(f"✗ Failed to update issue #{issue_number}")
             
             return success
 
+
     def _check_success(self, result: Any) -> bool:
         """Check if operation was successful"""
-        if not result:
-            return False
-        if isinstance(result, dict):
-            # Check for MCP format
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        if "error" in text.lower():
-                            return False
-                        return True
-            if "error" in result or result.get("isError"):
-                return False
-            return True
-        if isinstance(result, str):
-            return "error" not in result.lower()
-        return True
+        return check_api_success(result)
 
     async def list_issues(
         self,
@@ -335,118 +432,19 @@ class IssueManager:
 
     def _parse_result(self, result: Any) -> Any:
         """Parse API result, handling MCP response format"""
-        # MCP format: {'content': [{'type': 'text', 'text': 'JSON_STRING'}]}
-        if isinstance(result, dict):
-            # Check for MCP format first
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            return json.loads(text)
-                        except json.JSONDecodeError:
-                            continue
-            # Direct dict (not MCP format)
-            return result
-        if isinstance(result, list):
-            return result
-        if isinstance(result, str):
-            try:
-                return json.loads(result)
-            except json.JSONDecodeError:
-                return []
-        return []
+        return parse_mcp_result(result)
 
     def _parse_search_result(self, result: Any) -> List[Dict[str, Any]]:
         """Parse search API result, handling MCP response format"""
-        def extract_items(data: dict) -> List[Dict[str, Any]]:
-            """Extract items from parsed data"""
-            return data.get("items", [])
-        
-        # MCP format: {'content': [{'type': 'text', 'text': 'JSON_STRING'}]}
-        if isinstance(result, dict):
-            # Check for MCP format first
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return extract_items(parsed)
-                        except json.JSONDecodeError:
-                            continue
-            # Direct dict (not MCP format)
-            return extract_items(result)
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                return extract_items(parsed) if isinstance(parsed, dict) else []
-            except json.JSONDecodeError:
-                return []
-        return []
+        return parse_mcp_search_result(result)
 
     def _extract_issue_number(self, result: Any) -> int:
         """Extract issue number from API result"""
-        import re
-        
-        def extract_from_data(data: dict) -> int:
-            """Extract issue number from parsed data dict"""
-            # Direct number field
-            if "number" in data:
-                return data.get("number", 0)
-            # Extract from URL: https://github.com/owner/repo/issues/52
-            url = data.get("url", "") or data.get("html_url", "")
-            if url:
-                match = re.search(r'/issues/(\d+)', url)
-                if match:
-                    return int(match.group(1))
-            return 0
-        
-        if isinstance(result, dict):
-            # Direct dict with number or url
-            num = extract_from_data(result)
-            if num:
-                return num
-            # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                num = extract_from_data(parsed)
-                                if num:
-                                    return num
-                        except json.JSONDecodeError:
-                            # Try regex on raw text
-                            match = re.search(r'"number"\s*:\s*(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-                            match = re.search(r'/issues/(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    num = extract_from_data(parsed)
-                    if num:
-                        return num
-            except json.JSONDecodeError:
-                pass
-            # Try regex on raw string
-            match = re.search(r'"number"\s*:\s*(\d+)', result)
-            if match:
-                return int(match.group(1))
-            match = re.search(r'/issues/(\d+)', result)
-            if match:
-                return int(match.group(1))
-        return 0
+        return extract_issue_number(result)
+
+    def _extract_issue_id(self, result: Any) -> int:
+        """Extract issue database ID from API result"""
+        return extract_issue_id(result)
 
     def print_results(self, issues: List[Dict[str, Any]]):
         """Pretty print issue list"""
@@ -521,6 +519,7 @@ Note: For labels use label_manager.py, for comments use comment_manager.py
     create_parser.add_argument("--labels", help="Comma-separated labels")
     create_parser.add_argument("--checklist", help="Comma-separated checklist items")
     create_parser.add_argument("--assignees", help="Comma-separated assignees")
+    create_parser.add_argument("--parent", type=int, help="Parent issue number to link as sub-issue")
     
     # Command: list
     list_parser = subparsers.add_parser("list", help="List issues")
@@ -542,6 +541,10 @@ Note: For labels use label_manager.py, for comments use comment_manager.py
     update_parser.add_argument("--state-reason", dest="state_reason",
                               choices=["completed", "not_planned", "reopened"],
                               help="Reason for state change")
+    update_parser.add_argument("--add-labels", help="Comma-separated labels to add")
+    update_parser.add_argument("--remove-labels", help="Comma-separated labels to remove")
+    update_parser.add_argument("--assignees", help="Comma-separated assignees to set")
+    update_parser.add_argument("--milestone", type=int, help="Milestone number")
     
     args = parser.parse_args()
     
@@ -553,26 +556,44 @@ Note: For labels use label_manager.py, for comments use comment_manager.py
     
     try:
         if args.command == "close":
-            closed = await manager.close_issues_with_comments()
+            result = await manager.close_issues_with_comments()
+            closed = result["closed"]
+            failed = result["failed"]
             print(f"\n✓ Closed {len(closed)} issues: {closed}")
+            if failed:
+                print(f"✗ Failed to close {len(failed)} issues: {failed}")
+                sys.exit(1)
             
         elif args.command == "reopen":
-            reopened = await manager.reopen_issues(args.query)
+            result = await manager.reopen_issues(args.query)
+            reopened = result["reopened"]
+            failed = result["failed"]
             print(f"\n✓ Reopened {len(reopened)} issues: {reopened}")
+            if failed:
+                print(f"✗ Failed to reopen {len(failed)} issues: {failed}")
+                sys.exit(1)
             
         elif args.command == "create":
             labels = [l.strip() for l in args.labels.split(",")] if args.labels else None
             checklist = [c.strip() for c in args.checklist.split(",")] if args.checklist else None
             assignees = [a.strip() for a in args.assignees.split(",")] if args.assignees else None
             
-            issue_number = await manager.create_issue(
+            result = await manager.create_issue(
                 title=args.title,
                 body=args.body,
                 labels=labels,
                 checklist=checklist,
-                assignees=assignees
+                assignees=assignees,
+                parent_issue=args.parent
             )
-            print(f"\n✓ Created issue #{issue_number}")
+            issue_number = result["number"]
+            issue_id = result["id"]
+            print(f"\n✓ Created issue #{issue_number} (ID: {issue_id})")
+            if args.parent:
+                if issue_id and issue_id > 0:
+                    print(f"  Linked as sub-issue to #{args.parent}")
+                else:
+                    print(f"  ⚠ Warning: Could not link as sub-issue (ID extraction failed)")
             
         elif args.command == "list":
             labels = [l.strip() for l in args.labels.split(",")] if args.labels else None
@@ -584,12 +605,20 @@ Note: For labels use label_manager.py, for comments use comment_manager.py
             manager.print_results(issues)
             
         elif args.command == "update":
+            add_labels = [l.strip() for l in args.add_labels.split(",")] if args.add_labels else None
+            remove_labels = [l.strip() for l in args.remove_labels.split(",")] if args.remove_labels else None
+            assignees = [a.strip() for a in args.assignees.split(",")] if args.assignees else None
+            
             success = await manager.update_issue(
                 issue_number=args.number,
                 title=args.title,
                 body=args.body,
                 state=args.state,
-                state_reason=args.state_reason
+                state_reason=args.state_reason,
+                add_labels=add_labels,
+                remove_labels=remove_labels,
+                assignees=assignees,
+                milestone=args.milestone
             )
             sys.exit(0 if success else 1)
             

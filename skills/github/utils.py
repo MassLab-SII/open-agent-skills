@@ -177,57 +177,7 @@ class GitHubTools:
         """Exit async context manager"""
         await self.mcp_server.__aexit__(exc_type, exc, tb)
 
-    # ==================== Repository Management ====================
 
-    async def create_repository(self, name: str, description: Optional[str] = None, private: bool = False) -> Any:
-        """
-        Create a new GitHub repository in your account or specified organization
-        
-        Args:
-            name: Repository name
-            description: Repository description
-            private: Visibility
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"name": name, "private": private}
-            if description:
-                args["description"] = description
-            result = await self.mcp_server.call_tool("create_repository", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in create_repository: {e}")
-            return None
-
-    async def fork_repository(self, owner: str, repo: str, organization: Optional[str] = None) -> Any:
-        """
-        Fork a GitHub repository to your account or specified organization
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            organization: Optional organization to fork into
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo}
-            if organization:
-                args["organization"] = organization
-            result = await self.mcp_server.call_tool("fork_repository", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in fork_repository: {e}")
-            return None
 
     # ==================== Branch & Commit Management ====================
 
@@ -257,7 +207,7 @@ class GitHubTools:
             print(f"Error in create_branch: {e}")
             return None
 
-    async def get_commit(self, owner: str, repo: str, sha: str) -> Any:
+    async def get_commit(self, owner: str, repo: str, sha: str, include_diff: bool = True, **kwargs) -> Any:
         """
         Get details for a commit from a GitHub repository
         
@@ -265,12 +215,18 @@ class GitHubTools:
             owner: Repository owner
             repo: Repository name
             sha: Commit SHA
+            include_diff: Whether to include diff (default True)
+            **kwargs: Extra arguments (e.g. hallucinated parameters)
             
         Returns:
             Tool execution result or None if failed
         """
         try:
-            args = {"owner": owner, "repo": repo, "sha": sha, "include_diff": True}
+            # Check if include_diff was passed in kwargs (hallucination support)
+            if 'include_diff' in kwargs:
+                include_diff = kwargs['include_diff']
+                
+            args = {"owner": owner, "repo": repo, "sha": sha, "include_diff": include_diff}
             result = await self.mcp_server.call_tool("get_commit", args)
             content = result.get('content', [])
             if content and len(content) > 0:
@@ -304,7 +260,7 @@ class GitHubTools:
             print(f"Error in list_branches: {e}")
             return None
 
-    async def list_commits(self, owner: str, repo: str, sha: Optional[str] = None, path: Optional[str] = None, author: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None, page: int = 1, per_page: int = 30) -> Any:
+    async def list_commits(self, owner: str, repo: str, sha: Optional[str] = None, path: Optional[str] = None, author: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None, page: int = 1, per_page: int = 30, **kwargs) -> Any:
         """
         Get list of commits of a branch in a GitHub repository. Returns at least 30 results per page by default, but can return more if specified using the perPage parameter (up to 100).
         
@@ -318,11 +274,16 @@ class GitHubTools:
             until: ISO 8601 date
             page: Page number
             per_page: Results per page
+            **kwargs: Extra arguments (e.g. perPage)
             
         Returns:
             Tool execution result or None if failed
         """
         try:
+            # Handle perPage alias
+            if 'perPage' in kwargs:
+                per_page = kwargs['perPage']
+                
             args = {"owner": owner, "repo": repo, "page": page, "perPage": per_page}
             if sha: args["sha"] = sha
             if path: args["path"] = path
@@ -369,31 +330,7 @@ class GitHubTools:
             print(f"Error in create_or_update_file: {e}")
             return None
 
-    async def delete_file(self, owner: str, repo: str, path: str, message: str, branch: str, sha: str) -> Any:
-        """
-        Delete a file from a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            path: File path
-            message: Commit message
-            branch: Branch name
-            sha: File SHA
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "path": path, "message": message, "branch": branch, "sha": sha}
-            result = await self.mcp_server.call_tool("delete_file", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in delete_file: {e}")
-            return None
+
 
     async def get_file_contents(self, owner: str, repo: str, path: str, ref: Optional[str] = None, sha: Optional[str] = None) -> Any:
         """
@@ -472,28 +409,7 @@ class GitHubTools:
             print(f"Error in add_issue_comment: {e}")
             return None
 
-    async def assign_copilot_to_issue(self, owner: str, repo: str, issue_number: int) -> Any:
-        """
-        Assign Copilot to a specific issue in a GitHub repository.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            issue_number: Issue number
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "issue_number": issue_number}
-            result = await self.mcp_server.call_tool("assign_copilot_to_issue", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in assign_copilot_to_issue: {e}")
-            return None
+
 
     async def issue_read(self, owner: str, repo: str, issue_number: int, method: Optional[str] = None) -> Any:
         """
@@ -671,7 +587,6 @@ class GitHubTools:
             return None
 
     # ==================== Pull Requests ====================
-
     async def add_comment_to_pending_review(self, **kwargs) -> Any:
         """
         Add review comment to the requester's latest pending pull request review. A pending review needs to already exist to call this (check with the user if not sure).
@@ -775,7 +690,7 @@ class GitHubTools:
             print(f"Error in merge_pull_request: {e}")
             return None
 
-    async def pull_request_read(self, owner: str, repo: str, pull_number: int, method: Optional[str] = None, per_page: Optional[int] = None) -> Any:
+    async def pull_request_read(self, owner: str, repo: str, pull_number: int, method: Optional[str] = None, per_page: Optional[int] = None, **kwargs) -> Any:
         """
         Get information on a specific pull request in GitHub repository.
         
@@ -785,11 +700,16 @@ class GitHubTools:
             pull_number: Pull request number
             method: Optional method (e.g. "get", "get_files")
             per_page: Results per page
+            **kwargs: Extra arguments (e.g. perPage)
             
         Returns:
             Tool execution result or None if failed
         """
         try:
+            # Handle perPage alias
+            if 'perPage' in kwargs:
+                per_page = kwargs['perPage']
+                
             args = {"owner": owner, "repo": repo, "pullNumber": pull_number}
             if method: args["method"] = method
             if per_page: args["perPage"] = per_page
@@ -824,29 +744,6 @@ class GitHubTools:
             return result
         except Exception as e:
             print(f"Error in pull_request_review_write: {e}")
-            return None
-
-    async def request_copilot_review(self, owner: str, repo: str, pull_number: int) -> Any:
-        """
-        Request a GitHub Copilot code review for a pull request. Use this for automated feedback on pull requests, usually before requesting a human reviewer.
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            pull_number: Pull request number
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "pullNumber": pull_number}
-            result = await self.mcp_server.call_tool("request_copilot_review", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in request_copilot_review: {e}")
             return None
 
     async def search_pull_requests(self, query: str, page: int = 1, per_page: int = 30) -> Any:
@@ -928,75 +825,10 @@ class GitHubTools:
             print(f"Error in update_pull_request_branch: {e}")
             return None
 
+
     # ==================== Releases & Tags ====================
 
-    async def get_latest_release(self, owner: str, repo: str) -> Any:
-        """
-        Get the latest release in a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo}
-            result = await self.mcp_server.call_tool("get_latest_release", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_latest_release: {e}")
-            return None
 
-    async def get_release_by_tag(self, owner: str, repo: str, tag: str) -> Any:
-        """
-        Get a specific release by its tag name in a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            tag: Tag name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "tag": tag}
-            result = await self.mcp_server.call_tool("get_release_by_tag", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_release_by_tag: {e}")
-            return None
-
-    async def get_tag(self, owner: str, repo: str, tag: str) -> Any:
-        """
-        Get details about a specific git tag in a GitHub repository
-        
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            tag: Tag name
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"owner": owner, "repo": repo, "tag": tag}
-            result = await self.mcp_server.call_tool("get_tag", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in get_tag: {e}")
-            return None
 
     async def list_releases(self, owner: str, repo: str) -> Any:
         """
@@ -1040,96 +872,6 @@ class GitHubTools:
             return result
         except Exception as e:
             print(f"Error in list_tags: {e}")
-            return None
-
-    # ==================== Search (General) ====================
-    
-    # ⚠️ MCPMARK LIMITATION WARNING ⚠️
-    # search_code relies on GitHub's code search index which does NOT work on:
-    # - Newly created repositories (not indexed yet)
-    # - Private repositories (slower/limited indexing)
-    # - Forked repositories (may not be indexed)
-    # 
-    # In MCPMark testing, all repos are newly created and private, so search_code
-    # will ALWAYS return empty results. Use alternative approaches:
-    # - For finding commits: use list_commits + get_commit
-    # - For finding files: use get_file_contents with known paths
-    # - For PR analysis: use pr_investigator which uses list_commits(sha=head_ref)
-
-    async def search_code(self, query: str, page: int = 1, per_page: int = 30) -> Any:
-        """
-        ⚠️ WARNING: This tool does NOT work on newly created/private repositories!
-        
-        In MCPMark testing, all repos are newly created and private, so this tool
-        will return empty results. Use list_commits + get_commit instead.
-        
-        Fast and precise code search across indexed GitHub repositories using 
-        GitHub's native search engine. Best for finding exact symbols, functions, 
-        classes, or specific code patterns in PUBLIC, ESTABLISHED repositories.
-        
-        Args:
-            query: Search query
-            page: Page number
-            per_page: Results per page
-            
-        Returns:
-            Tool execution result or None if failed (often empty for new/private repos)
-        """
-        try:
-            args = {"query": query, "page": page, "perPage": per_page}
-            result = await self.mcp_server.call_tool("search_code", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in search_code: {e}")
-            return None
-
-    async def search_repositories(self, query: str, page: int = 1, per_page: int = 30) -> Any:
-        """
-        Find GitHub repositories by name, description, readme, topics, or other metadata. Perfect for discovering projects, finding examples, or locating specific repositories across GitHub.
-        
-        Args:
-            query: Search query
-            page: Page number
-            per_page: Results per page
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"query": query, "page": page, "perPage": per_page}
-            result = await self.mcp_server.call_tool("search_repositories", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in search_repositories: {e}")
-            return None
-
-    async def search_users(self, query: str, page: int = 1, per_page: int = 30) -> Any:
-        """
-        Find GitHub users by username, real name, or other profile information. Useful for locating developers, contributors, or team members.
-        
-        Args:
-            query: Search query
-            page: Page number
-            per_page: Results per page
-            
-        Returns:
-            Tool execution result or None if failed
-        """
-        try:
-            args = {"query": query, "page": page, "perPage": per_page}
-            result = await self.mcp_server.call_tool("search_users", args)
-            content = result.get('content', [])
-            if content and len(content) > 0:
-                return content[0].get('text', '')
-            return result
-        except Exception as e:
-            print(f"Error in search_users: {e}")
             return None
 
     # ==================== Teams & Users ====================
@@ -1194,7 +936,7 @@ class GitHubTools:
             print(f"Error in get_teams: {e}")
             return None
 
-    # ==================== Other ====================
+ # ==================== Labels ====================
 
     async def get_label(self, owner: str, repo: str, name: str) -> Any:
         """
@@ -1218,3 +960,741 @@ class GitHubTools:
         except Exception as e:
             print(f"Error in get_label: {e}")
             return None
+
+    # ==================== Search (General) ====================
+    
+    # ⚠️ MCPMARK LIMITATION WARNING ⚠️
+    # search_code relies on GitHub's code search index which does NOT work on:
+    # - Newly created repositories (not indexed yet)
+    # - Private repositories (slower/limited indexing)
+    # - Forked repositories (may not be indexed)
+    # 
+    # In MCPMark testing, all repos are newly created and private, so search_code
+    # will ALWAYS return empty results. Use alternative approaches:
+    # - For finding commits: use list_commits + get_commit
+    # - For finding files: use get_file_contents with known paths
+    # - For PR analysis: use pr_investigator which uses list_commits(sha=head_ref)
+
+    async def search_code(self, query: str, page: int = 1, per_page: int = 30) -> Any:
+        """
+        ⚠️ WARNING: This tool does NOT work on newly created/private repositories!
+        
+        In MCPMark testing, all repos are newly created and private, so this tool
+        will return empty results. Use list_commits + get_commit instead.
+        
+        Fast and precise code search across indexed GitHub repositories using 
+        GitHub's native search engine. Best for finding exact symbols, functions, 
+        classes, or specific code patterns in PUBLIC, ESTABLISHED repositories.
+        
+        Args:
+            query: Search query
+            page: Page number
+            per_page: Results per page
+            
+        Returns:
+            Tool execution result or None if failed (often empty for new/private repos)
+        """
+        try:
+            args = {"query": query, "page": page, "perPage": per_page}
+            result = await self.mcp_server.call_tool("search_code", args)
+            content = result.get('content', [])
+            if content and len(content) > 0:
+                return content[0].get('text', '')
+            return result
+        except Exception as e:
+            print(f"Error in search_code: {e}")
+            return None
+
+
+# ==============================================================================
+# Common Helper Functions (NOT MCP Tools)
+# ==============================================================================
+# These are utility functions for parsing MCP responses and extracting data.
+# They are NOT MCP tools, just common helpers used across multiple skill scripts.
+# ==============================================================================
+
+import json
+import re
+import base64
+
+
+def parse_mcp_result(result: Any) -> Any:
+    """
+    Parse MCP API result, handling the standard MCP response format.
+    
+    MCP format: {'content': [{'type': 'text', 'text': 'JSON_STRING'}]}
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        Parsed data (dict, list, or original result)
+    """
+    if isinstance(result, dict):
+        # Check for MCP format first
+        content_list = result.get("content", [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    try:
+                        return json.loads(text)
+                    except json.JSONDecodeError:
+                        continue
+        # Direct dict (not MCP format)
+        return result
+    if isinstance(result, list):
+        return result
+    if isinstance(result, str):
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return result
+    return result
+
+
+def parse_mcp_search_result(result: Any) -> List[Dict[str, Any]]:
+    """
+    Parse MCP search API result, extracting 'items' from the response.
+    
+    Args:
+        result: Raw MCP search API result
+        
+    Returns:
+        List of items from search result
+    """
+    def extract_items(data: dict) -> List[Dict[str, Any]]:
+        return data.get("items", [])
+    
+    if isinstance(result, dict):
+        # Check for MCP format first
+        content_list = result.get("content", [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict):
+                            return extract_items(parsed)
+                    except json.JSONDecodeError:
+                        continue
+        # Direct dict (not MCP format)
+        return extract_items(result)
+    if isinstance(result, str):
+        try:
+            parsed = json.loads(result)
+            return extract_items(parsed) if isinstance(parsed, dict) else []
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def extract_sha_from_result(result: Any) -> Optional[str]:
+    """
+    Extract SHA from MCP get_file_contents result.
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        SHA string or None if not found
+    """
+    if isinstance(result, dict):
+        # Direct sha field
+        if "sha" in result:
+            return result.get("sha")
+        # Try to extract from MCP text content (JSON string)
+        content_list = result.get("content", [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict):
+                            return parsed.get("sha")
+                    except json.JSONDecodeError:
+                        pass
+    return None
+
+
+def extract_file_content(result: Any) -> Optional[str]:
+    """
+    Extract actual file content from MCP get_file_contents result.
+    
+    The MCP result format is: {'content': [{'type': 'text', 'text': '...'}], ...}
+    The 'text' field contains a JSON string with the file info including 'content' (base64) and 'sha'.
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        Decoded file content string or None
+    """
+    if not result:
+        return None
+    
+    def decode_base64_content(b64_content: str) -> Optional[str]:
+        """Safely decode base64 content, handling potential binary files."""
+        try:
+            b64_clean = b64_content.replace('\n', '')
+            decoded_bytes = base64.b64decode(b64_clean)
+            # Try UTF-8 first
+            return decoded_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            # Try latin-1 as fallback (handles most binary-ish text)
+            try:
+                return decoded_bytes.decode('latin-1')
+            except Exception:
+                return None
+        except (ValueError, Exception):
+            return None
+    
+    if isinstance(result, str):
+        # Try to parse as JSON first
+        try:
+            parsed = json.loads(result)
+            if isinstance(parsed, dict) and 'content' in parsed:
+                return decode_base64_content(parsed['content'])
+        except json.JSONDecodeError:
+            return result
+    
+    if isinstance(result, dict):
+        # MCP result format: {'content': [{'type': 'text', 'text': '...'}], ...}
+        content_list = result.get('content', [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get('type') == 'text':
+                    text = item.get('text', '')
+                    # The text is a JSON string containing file info
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict):
+                            # GitHub MCP returns base64 encoded content
+                            if 'content' in parsed:
+                                return decode_base64_content(parsed['content'])
+                    except json.JSONDecodeError:
+                        # Not JSON, return as-is
+                        return text
+        # Direct dict with base64 content field
+        content = result.get("content", "")
+        if content and isinstance(content, str):
+            decoded = decode_base64_content(content)
+            if decoded is not None:
+                return decoded
+            return content
+    return None
+
+
+def extract_pr_number(result: Any) -> int:
+    """
+    Extract PR number from MCP API result.
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        PR number or 0 if not found
+    """
+    def extract_from_data(data: dict) -> int:
+        # Direct number field - handle both int and string types
+        if "number" in data:
+            num = data.get("number", 0)
+            # Handle string number (e.g., "51")
+            if isinstance(num, str):
+                try:
+                    num = int(num)
+                except (ValueError, TypeError):
+                    num = 0
+            if isinstance(num, int) and num > 0:
+                return num
+        # Extract from URL: https://github.com/owner/repo/pull/51
+        url = data.get("url", "") or data.get("html_url", "")
+        if url and isinstance(url, str):
+            match = re.search(r'/pull/(\d+)', url)
+            if match:
+                return int(match.group(1))
+        return 0
+    
+    if isinstance(result, dict):
+        # Direct dict with number or url
+        num = extract_from_data(result)
+        if num:
+            return num
+        # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+        content_list = result.get("content", [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict):
+                            num = extract_from_data(parsed)
+                            if num:
+                                return num
+                    except json.JSONDecodeError:
+                        # Try regex on raw text - handle both "number": 51 and "number": "51"
+                        match = re.search(r'"number"\s*:\s*"?(\d+)"?', text)
+                        if match:
+                            return int(match.group(1))
+                        match = re.search(r'/pull/(\d+)', text)
+                        if match:
+                            return int(match.group(1))
+    if isinstance(result, str):
+        try:
+            parsed = json.loads(result)
+            if isinstance(parsed, dict):
+                num = extract_from_data(parsed)
+                if num:
+                    return num
+        except json.JSONDecodeError:
+            pass
+        # Try regex on raw string - handle both "number": 51 and "number": "51"
+        match = re.search(r'"number"\s*:\s*"?(\d+)"?', result)
+        if match:
+            return int(match.group(1))
+        match = re.search(r'/pull/(\d+)', result)
+        if match:
+            return int(match.group(1))
+    return 0
+
+
+def extract_issue_number(result: Any) -> int:
+    """
+    Extract Issue number from MCP API result.
+    
+    Handles multiple response formats:
+    1. Direct dict with 'number' field: {"number": 51, ...}
+    2. JSON string: '{"number": 51, ...}'
+    3. MCP format: {'content': [{'type': 'text', 'text': '{"number": 51, ...}'}]}
+    4. URL extraction: https://github.com/owner/repo/issues/51
+    5. Nested JSON string: '{"type":"text","text":"{\"number\":51,...}"}'
+    6. Dict with 'type':'text' and 'text' field: {'type': 'text', 'text': '{"number":...}'}
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        Issue number or 0 if not found
+    """
+    def extract_from_data(data: dict) -> int:
+        # Direct number field - handle both int and string types
+        if "number" in data:
+            num = data.get("number", 0)
+            # Handle string number (e.g., "52")
+            if isinstance(num, str):
+                try:
+                    num = int(num)
+                except (ValueError, TypeError):
+                    num = 0
+            if isinstance(num, int) and num > 0:
+                return num
+        # Extract from URL: https://github.com/owner/repo/issues/52
+        url = data.get("url", "") or data.get("html_url", "")
+        if url and isinstance(url, str):
+            match = re.search(r'/issues/(\d+)', url)
+            if match:
+                return int(match.group(1))
+        return 0
+    
+    def extract_from_string(text: str, depth: int = 0) -> int:
+        """Extract issue number from a string (JSON or raw text)
+        
+        Args:
+            text: String to extract from
+            depth: Recursion depth to prevent infinite loops
+        """
+        if not text or not isinstance(text, str) or depth > 3:
+            return 0
+        
+        # First try to parse as JSON
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                # Check for direct number field
+                num = extract_from_data(parsed)
+                if num > 0:
+                    return num
+                
+                # Handle nested format: {'type': 'text', 'text': '{"number":...}'}
+                # This is the format returned by issue_write when it extracts content[0].text
+                if parsed.get("type") == "text" and "text" in parsed:
+                    nested_text = parsed.get("text", "")
+                    if nested_text:
+                        num = extract_from_string(nested_text, depth + 1)
+                        if num > 0:
+                            return num
+                
+                # Also check any 'text' field even without type
+                if "text" in parsed:
+                    nested_text = parsed.get("text", "")
+                    if nested_text and isinstance(nested_text, str):
+                        num = extract_from_string(nested_text, depth + 1)
+                        if num > 0:
+                            return num
+        except (json.JSONDecodeError, TypeError):
+            pass
+        
+        # Try regex patterns on raw text
+        # Pattern 1: "number": 51 or "number":51 or "number": "51" or "number":"51"
+        match = re.search(r'"number"\s*:\s*"?(\d+)"?', text)
+        if match:
+            num = int(match.group(1))
+            if num > 0:
+                return num
+        
+        # Pattern 2: /issues/51
+        match = re.search(r'/issues/(\d+)', text)
+        if match:
+            num = int(match.group(1))
+            if num > 0:
+                return num
+        
+        return 0
+    
+    # Handle None
+    if result is None:
+        return 0
+    
+    # Handle dict
+    if isinstance(result, dict):
+        # Direct dict with number or url
+        num = extract_from_data(result)
+        if num > 0:
+            return num
+        
+        # Handle format: {'type': 'text', 'text': '{"number":...}'}
+        # This can happen when the result is already partially parsed
+        if result.get("type") == "text" and "text" in result:
+            text = result.get("text", "")
+            if text:
+                num = extract_from_string(text)
+                if num > 0:
+                    return num
+        
+        # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+        content_list = result.get("content", [])
+        if isinstance(content_list, list):
+            for item in content_list:
+                if isinstance(item, dict):
+                    # Check for 'text' type content
+                    if item.get("type") == "text":
+                        text = item.get("text", "")
+                        num = extract_from_string(text)
+                        if num > 0:
+                            return num
+                    # Also check direct 'text' field without type
+                    elif "text" in item:
+                        text = item.get("text", "")
+                        num = extract_from_string(text)
+                        if num > 0:
+                            return num
+        
+        # Try to extract from any string value in the dict
+        for key, value in result.items():
+            if isinstance(value, str):
+                num = extract_from_string(value)
+                if num > 0:
+                    return num
+    
+    # Handle string
+    if isinstance(result, str):
+        num = extract_from_string(result)
+        if num > 0:
+            return num
+    
+    return 0
+
+
+def extract_issue_id(result: Any) -> int:
+    """
+    Extract Issue database ID from MCP API result.
+    
+    The 'id' field is the GitHub database ID (e.g., 3753519439), which is different
+    from the 'number' field (e.g., 52). The ID is required for sub_issue_write operations.
+    
+    Handles multiple response formats:
+    1. Direct dict with 'id' field: {"id": 3753519439, ...}
+    2. JSON string: '{"id": 3753519439, ...}'
+    3. MCP format: {'content': [{'type': 'text', 'text': '{"id": 3753519439, ...}'}]}
+    4. Nested JSON string: '{"type":"text","text":"{\"id\":3753519439,...}"}'
+    5. Dict with 'type':'text' and 'text' field: {'type': 'text', 'text': '{"id":...}'}
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        Issue database ID or 0 if not found
+    """
+    def extract_from_data(data: dict) -> int:
+        # Direct id field - handle both int and string types
+        if "id" in data:
+            issue_id = data.get("id", 0)
+            # Handle string ID (e.g., "3759796333")
+            if isinstance(issue_id, str):
+                try:
+                    issue_id = int(issue_id)
+                except (ValueError, TypeError):
+                    return 0
+            if isinstance(issue_id, int) and issue_id > 0:
+                return issue_id
+        return 0
+    
+    def extract_from_string(text: str, depth: int = 0) -> int:
+        """Extract issue ID from a string (JSON or raw text)
+        
+        Args:
+            text: String to extract from
+            depth: Recursion depth to prevent infinite loops
+        """
+        if not text or not isinstance(text, str) or depth > 3:
+            return 0
+        
+        # First try to parse as JSON
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                # Check for direct id field
+                issue_id = extract_from_data(parsed)
+                if issue_id > 0:
+                    return issue_id
+                
+                # Handle nested format: {'type': 'text', 'text': '{"id":...}'}
+                # This is the format returned by issue_write when it extracts content[0].text
+                if parsed.get("type") == "text" and "text" in parsed:
+                    nested_text = parsed.get("text", "")
+                    if nested_text:
+                        issue_id = extract_from_string(nested_text, depth + 1)
+                        if issue_id > 0:
+                            return issue_id
+                
+                # Also check any 'text' field even without type
+                if "text" in parsed:
+                    nested_text = parsed.get("text", "")
+                    if nested_text and isinstance(nested_text, str):
+                        issue_id = extract_from_string(nested_text, depth + 1)
+                        if issue_id > 0:
+                            return issue_id
+        except (json.JSONDecodeError, TypeError):
+            pass
+        
+        # Try regex pattern on raw text - id is usually a large number
+        # Pattern: "id": 3753519439 or "id":3753519439 or "id": "3753519439" or "id":"3753519439"
+        # First try without quotes around the value
+        match = re.search(r'"id"\s*:\s*(\d+)', text)
+        if match:
+            issue_id = int(match.group(1))
+            if issue_id > 0:
+                return issue_id
+        # Then try with quotes around the value (string ID)
+        match = re.search(r'"id"\s*:\s*"(\d+)"', text)
+        if match:
+            issue_id = int(match.group(1))
+            if issue_id > 0:
+                return issue_id
+        
+        return 0
+    
+    # Handle None
+    if result is None:
+        return 0
+    
+    # Handle dict
+    if isinstance(result, dict):
+        # Direct dict with id
+        issue_id = extract_from_data(result)
+        if issue_id > 0:
+            return issue_id
+        
+        # Handle format: {'type': 'text', 'text': '{"id":...}'}
+        # This can happen when the result is already partially parsed
+        if result.get("type") == "text" and "text" in result:
+            text = result.get("text", "")
+            if text:
+                issue_id = extract_from_string(text)
+                if issue_id > 0:
+                    return issue_id
+        
+        # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+        content_list = result.get("content", [])
+        if isinstance(content_list, list):
+            for item in content_list:
+                if isinstance(item, dict):
+                    # Check for 'text' type content
+                    if item.get("type") == "text":
+                        text = item.get("text", "")
+                        issue_id = extract_from_string(text)
+                        if issue_id > 0:
+                            return issue_id
+                    # Also check direct 'text' field without type
+                    elif "text" in item:
+                        text = item.get("text", "")
+                        issue_id = extract_from_string(text)
+                        if issue_id > 0:
+                            return issue_id
+        
+        # Try to extract from any string value in the dict
+        for key, value in result.items():
+            if isinstance(value, str):
+                issue_id = extract_from_string(value)
+                if issue_id > 0:
+                    return issue_id
+    
+    # Handle string
+    if isinstance(result, str):
+        issue_id = extract_from_string(result)
+        if issue_id > 0:
+            return issue_id
+    
+    return 0
+
+
+def check_api_success(result: Any) -> bool:
+    """
+    Check if MCP API operation was successful.
+    
+    This function checks for explicit error indicators in the API response.
+    It avoids false positives by only checking for specific error patterns,
+    not just the presence of the word "error" in content.
+    
+    Args:
+        result: Raw MCP API result
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    if not result:
+        return False
+    
+    def check_data(data: dict) -> bool:
+        # Check for explicit MCP error indicator
+        if data.get("isError") is True:
+            return False
+        
+        # Check for GitHub API error response format
+        # GitHub returns {"message": "Not Found", "documentation_url": "..."} for errors
+        message = data.get("message", "")
+        if message:
+            message_lower = str(message).lower()
+            # Only treat as error if it's a known GitHub API error message
+            error_messages = [
+                "not found",
+                "bad credentials", 
+                "requires authentication",
+                "forbidden",
+                "validation failed",
+                "unprocessable entity",
+                "rate limit exceeded",
+                "server error",
+                "service unavailable"
+            ]
+            if any(err in message_lower for err in error_messages):
+                # Double-check: if there's also a "documentation_url", it's definitely an error
+                if data.get("documentation_url"):
+                    return False
+                # Or if there's no other meaningful data, it's likely an error
+                if len(data) <= 2:  # Only message and maybe one other field
+                    return False
+        
+        # Check for explicit error object (not just a field named "error" with data)
+        error_field = data.get("error")
+        if isinstance(error_field, dict):
+            # This is an error object, not just a field
+            if error_field.get("message") or error_field.get("code"):
+                return False
+        elif isinstance(error_field, str) and error_field:
+            # Non-empty error string
+            return False
+        
+        return True
+    
+    if isinstance(result, dict):
+        # Check for MCP format first
+        content_list = result.get("content", [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict):
+                            return check_data(parsed)
+                    except json.JSONDecodeError:
+                        # For non-JSON text, check for explicit error patterns
+                        text_lower = text.lower()
+                        # Check for MCP error response patterns
+                        if '"iserror":true' in text_lower or '"iserror": true' in text_lower:
+                            return False
+                        # Check for GitHub API error format
+                        if '"message":"not found"' in text_lower and '"documentation_url"' in text_lower:
+                            return False
+                        return True
+        # Direct dict (not MCP format)
+        return check_data(result)
+    if isinstance(result, str):
+        try:
+            parsed = json.loads(result)
+            if isinstance(parsed, dict):
+                return check_data(parsed)
+        except json.JSONDecodeError:
+            pass
+        # For raw strings, check for explicit error patterns
+        result_lower = result.lower()
+        if '"iserror":true' in result_lower or '"iserror": true' in result_lower:
+            return False
+        if '"message":"not found"' in result_lower and '"documentation_url"' in result_lower:
+            return False
+        return True
+    return True
+
+
+def check_merge_success(result: Any) -> bool:
+    """
+    Check if PR merge operation was successful.
+    
+    Args:
+        result: Raw MCP API result from merge_pull_request
+        
+    Returns:
+        True if merge was successful, False otherwise
+    """
+    def check_data(data: dict) -> bool:
+        return data.get("merged", False) or "sha" in data
+    
+    if isinstance(result, dict):
+        # Direct dict check
+        if check_data(result):
+            return True
+        # MCP format: {'content': [{'type': 'text', 'text': '...'}]}
+        content_list = result.get("content", [])
+        if isinstance(content_list, list) and content_list:
+            for item in content_list:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict) and check_data(parsed):
+                            return True
+                    except json.JSONDecodeError:
+                        # Check raw text
+                        if '"merged":true' in text.lower() or '"sha"' in text:
+                            return True
+    if isinstance(result, str):
+        try:
+            parsed = json.loads(result)
+            if isinstance(parsed, dict) and check_data(parsed):
+                return True
+        except json.JSONDecodeError:
+            pass
+        # Check raw string
+        result_lower = result.lower()
+        return '"merged":true' in result_lower or '"sha"' in result_lower
+    return False
+
+
+
+
+
+

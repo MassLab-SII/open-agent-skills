@@ -37,7 +37,12 @@ import re
 import sys
 from typing import Optional, Any
 
-from utils import GitHubTools
+from utils import (
+    GitHubTools,
+    extract_pr_number,
+    check_api_success,
+    check_merge_success,
+)
 
 
 class GitFlowManager:
@@ -155,124 +160,15 @@ class GitFlowManager:
 
     def _check_success(self, result: Any) -> bool:
         """Check if operation was successful, handling MCP response format"""
-        if not result:
-            return False
-        
-        def check_data(data: dict) -> bool:
-            if "error" in data or data.get("isError"):
-                return False
-            return True
-        
-        if isinstance(result, dict):
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                return check_data(parsed)
-                        except json.JSONDecodeError:
-                            text_lower = text.lower()
-                            if "error" in text_lower or "failed" in text_lower:
-                                return False
-                            return True
-            return check_data(result)
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    return check_data(parsed)
-            except json.JSONDecodeError:
-                pass
-            result_lower = result.lower()
-            if "error" in result_lower or "failed" in result_lower:
-                return False
-            return True
-        return True
+        return check_api_success(result)
 
     def _check_merge_success(self, result: Any) -> bool:
         """Check if merge was successful, handling MCP response format"""
-        def check_data(data: dict) -> bool:
-            return data.get("merged", False) or "sha" in data
-        
-        if isinstance(result, dict):
-            if check_data(result):
-                return True
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict) and check_data(parsed):
-                                return True
-                        except json.JSONDecodeError:
-                            if '"merged":true' in text.lower() or '"sha"' in text:
-                                return True
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict) and check_data(parsed):
-                    return True
-            except json.JSONDecodeError:
-                pass
-            result_lower = result.lower()
-            return '"merged":true' in result_lower or '"sha"' in result_lower
-        return False
+        return check_merge_success(result)
 
     def _extract_pr_number(self, result: Any) -> int:
         """Extract PR number from result, handling MCP response format"""
-        def extract_from_data(data: dict) -> int:
-            if "number" in data:
-                return data.get("number", 0)
-            url = data.get("url", "") or data.get("html_url", "")
-            if url:
-                match = re.search(r'/pull/(\d+)', url)
-                if match:
-                    return int(match.group(1))
-            return 0
-        
-        if isinstance(result, dict):
-            num = extract_from_data(result)
-            if num:
-                return num
-            content_list = result.get("content", [])
-            if isinstance(content_list, list) and content_list:
-                for item in content_list:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        text = item.get("text", "")
-                        try:
-                            parsed = json.loads(text)
-                            if isinstance(parsed, dict):
-                                num = extract_from_data(parsed)
-                                if num:
-                                    return num
-                        except json.JSONDecodeError:
-                            match = re.search(r'"number"\s*:\s*(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-                            match = re.search(r'/pull/(\d+)', text)
-                            if match:
-                                return int(match.group(1))
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-                if isinstance(parsed, dict):
-                    num = extract_from_data(parsed)
-                    if num:
-                        return num
-            except json.JSONDecodeError:
-                pass
-            match = re.search(r'"number"\s*:\s*(\d+)', result)
-            if match:
-                return int(match.group(1))
-            match = re.search(r'/pull/(\d+)', result)
-            if match:
-                return int(match.group(1))
-        return 0
+        return extract_pr_number(result)
 
 
 async def main():

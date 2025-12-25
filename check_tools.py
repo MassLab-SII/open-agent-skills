@@ -1,6 +1,6 @@
 import asyncio
 import json
-from skills.github_detective.utils import GitHubTools
+from skills.github.utils import GitHubTools
 
 async def main():
     print("Connecting to MCP Server...")
