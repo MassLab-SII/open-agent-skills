@@ -1,0 +1,27 @@
+{
+  "task_name": "missing-semester__assign_contributor_labels",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T20:13:24.356383",
+    "end": "2025-12-25T20:21:08.222324"
+  },
+  "agent_execution_time": 353.0617530345917,
+  "task_execution_time": 463.86589217185974,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "  ❌ Issue #9 has incorrect labels\n     Expected: ['assigned-anishathalye', 'assigned-jonhoo']\n     Found: []\n  ❌ Issue #14 has incorrect labels\n     Expected: ['assigned-anishathalye', 'assigned-jonhoo']\n     Found: []\n  ❌ Issue #15 has incorrect labels\n     Expected: ['assigned-anishathalye']\n     Found: []\n  ❌ PR #21 has incorrect labels\n     Expected: ['assigned-anishathalye']\n     Found: ['assigned-Anish-Athalye']\n  ❌ PR #22 has incorrect labels\n     Expected: ['assigned-anishathalye']\n     Found: ['assigned-Anish-Athalye']\n  ❌ PR #23 has incorrect labels\n     Expected: ['assigned-anishathalye']\n     Found: ['assigned-Anish-Athalye']\n  ❌ PR #24 has incorrect labels\n     Expected: ['assigned-anishathalye']\n     Found: ['assigned-Anish-Athalye']\n\n❌ Some verification checks failed\n",
+    "verification_output": "Verifying contributor labels assignment task completion...\n\nChecking Issue #9...\n\nChecking Issue #14...\n\nChecking Issue #15...\n\nChecking PR #21...\n\nChecking PR #22...\n\nChecking PR #23...\n\nChecking PR #24...\n"
+  },
+  "token_usage": {
+    "input_tokens": 903355,
+    "output_tokens": 4338,
+    "total_tokens": 907693,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 26
+}

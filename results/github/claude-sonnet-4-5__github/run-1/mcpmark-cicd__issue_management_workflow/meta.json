@@ -1,0 +1,27 @@
+{
+  "task_name": "mcpmark-cicd__issue_management_workflow",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T19:50:02.325719",
+    "end": "2025-12-25T20:06:45.496271"
+  },
+  "agent_execution_time": 895.1575880050659,
+  "task_execution_time": 1003.1705327033997,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Verification failed with no error message",
+    "verification_output": "🔍 Starting Issue Management Workflow Verification\n============================================================\n⏳ Waiting for GitHub Actions workflows to complete...\n⏳ Still waiting... (0s elapsed)\n⏳ Still waiting... (7s elapsed)\n⏳ Still waiting... (13s elapsed)\n⏳ Still waiting... (19s elapsed)\n⏳ Still waiting... (25s elapsed)\n⏳ Still waiting... (31s elapsed)\n⏳ Still waiting... (37s elapsed)\n⏳ Still waiting... (43s elapsed)\n⏳ Still waiting... (49s elapsed)\n⏳ Still waiting... (55s elapsed)\n⏳ Still waiting... (61s elapsed)\n⏳ Still waiting... (67s elapsed)\n⏳ Still waiting... (73s elapsed)\n⏳ Still waiting... (79s elapsed)\n⏳ Still waiting... (85s elapsed)\n⚠️ Workflow completion wait timed out after 90s\n⚠️ Warning: Workflows may still be running. Continuing with verification...\n\n🐛 Verifying Bug Issue...\n   Found bug issue #5\n   ✅ Bug Report Guidelines comment found\n❌ Bug Issue Verification Failed:\n   - Missing labels: ['first-time-contributor']. Found: ['bug', 'priority-high', 'needs-review']\n   - No milestone found. Expected: v1.0.0\n\n🚀 Verifying Epic Issue...\n   Found epic issue #6\n   ✅ Labels verified: ['epic', 'priority-high', 'needs-review']\n   ✅ Feature Request Process comment found\n   ✅ Found 4 sub-issues\n   ✅ Epic Tasks checklist verified with correct issue references: [8, 9, 10, 11]\n❌ Epic Issue Verification Failed:\n   - No milestone found. Expected: v1.0.0\n\n🔧 Verifying Maintenance Issue...\n   Found maintenance issue #7\n   ✅ Labels verified: ['maintenance', 'priority-medium', 'needs-review']\n   ✅ No milestone assigned (correct for maintenance issue)\n   ✅ Maintenance Guidelines comment found\n✅ Maintenance Issue Verification Passed\n\n============================================================\n❌ Issue Management Workflow verification FAILED!\n   Some issues did not meet the expected automation requirements.\n"
+  },
+  "token_usage": {
+    "input_tokens": 3142078,
+    "output_tokens": 26133,
+    "total_tokens": 3168211,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 64
+}

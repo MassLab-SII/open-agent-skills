@@ -63,32 +63,51 @@ def _check_file_content(
 def _find_issue_by_title_keywords(
     title_keywords: List[str], headers: Dict[str, str], org: str, repo: str = "harmony"
 ) -> Optional[Dict]:
-    """Find an issue by title keywords and return the issue data."""
+    """Find the most recently created issue by title keywords and return the issue data."""
+    matching_issues = []
     for state in ["open", "closed"]:
         success, issues = _get_github_api(
-            f"issues?state={state}&per_page=100", headers, org, repo
+            f"issues?state={state}&per_page=100&sort=created&direction=desc",
+            headers,
+            org,
+            repo,
         )
         if success and issues:
             for issue in issues:
+                # Skip pull requests (GitHub API returns PRs in issues endpoint)
+                if issue.get("pull_request"):
+                    continue
                 title = issue.get("title", "").lower()
                 if all(keyword.lower() in title for keyword in title_keywords):
-                    return issue
+                    matching_issues.append(issue)
+
+    if matching_issues:
+        # Return the most recently created issue
+        return max(matching_issues, key=lambda i: i.get("created_at", ""))
     return None
 
 
 def _find_pr_by_title_keywords(
     title_keywords: List[str], headers: Dict[str, str], org: str, repo: str = "harmony"
 ) -> Optional[Dict]:
-    """Find a PR by title keywords and return the PR data."""
+    """Find the most recently created PR by title keywords and return the PR data."""
+    matching_prs = []
     for state in ["open", "closed"]:
         success, prs = _get_github_api(
-            f"pulls?state={state}&per_page=100", headers, org, repo
+            f"pulls?state={state}&per_page=100&sort=created&direction=desc",
+            headers,
+            org,
+            repo,
         )
         if success and prs:
             for pr in prs:
                 title = pr.get("title", "").lower()
                 if all(keyword.lower() in title for keyword in title_keywords):
-                    return pr
+                    matching_prs.append(pr)
+
+    if matching_prs:
+        # Return the most recently created PR
+        return max(matching_prs, key=lambda p: p.get("created_at", ""))
     return None
 
 

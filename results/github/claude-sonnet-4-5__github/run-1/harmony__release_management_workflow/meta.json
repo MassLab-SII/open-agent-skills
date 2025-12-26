@@ -1,0 +1,27 @@
+{
+  "task_name": "harmony__release_management_workflow",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T19:31:43.969884",
+    "end": "2025-12-25T19:43:43.813260"
+  },
+  "agent_execution_time": 656.389652967453,
+  "task_execution_time": 719.8433320522308,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Error: MetaSep token fix not found in src/encoding.rs or file is too small\n",
+    "verification_output": "Verifying GitHub release management workflow completion...\n1. Verifying release branch exists...\n2. Verifying MetaSep token fix in encoding.rs...\n"
+  },
+  "token_usage": {
+    "input_tokens": 2611660,
+    "output_tokens": 17231,
+    "total_tokens": 2628891,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 38
+}

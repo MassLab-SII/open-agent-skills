@@ -1,0 +1,149 @@
+{
+  "model_name": "claude-sonnet-4.5",
+  "model_config": {
+    "mcp_service": "github",
+    "model_name": "claude-sonnet-4.5",
+    "litellm_run_model_name": null,
+    "reasoning_effort": "default",
+    "timeout": 3600,
+    "agent_name": "mcpmark"
+  },
+  "total_tasks": 23,
+  "successful_tasks": 10,
+  "failed_tasks": 13,
+  "success_rate": 43.48,
+  "total_task_execution_time": 10330.326986312866,
+  "average_task_execution_time": 449.1446515788203,
+  "total_agent_execution_time": 8027.827456951141,
+  "average_agent_execution_time": 349.03597638918006,
+  "token_usage": {
+    "total_input_tokens": 17706784,
+    "total_output_tokens": 155136,
+    "total_tokens": 17861920,
+    "total_reasoning_tokens": 0,
+    "avg_input_tokens": 769860.17,
+    "avg_output_tokens": 6745.04,
+    "avg_total_tokens": 776605.22,
+    "avg_reasoning_tokens": 0.0
+  },
+  "turn_usage": {
+    "total_turns": 546,
+    "avg_turns": 23.74
+  },
+  "category_breakdown": {
+    "harmony": {
+      "total": 5,
+      "success_rate": 60.0,
+      "avg_time": 442.57,
+      "token_usage": {
+        "total_input": 5008569,
+        "total_output": 41606,
+        "total": 5050175,
+        "total_reasoning": 0,
+        "avg_input": 1001713.8,
+        "avg_output": 8321.2,
+        "avg_total": 1010035.0,
+        "avg_reasoning": 0.0
+      },
+      "turn_usage": {
+        "total_turns": 134,
+        "avg_turns": 26.8
+      }
+    },
+    "mcpmark-cicd": {
+      "total": 4,
+      "success_rate": 25.0,
+      "avg_time": 445.13,
+      "token_usage": {
+        "total_input": 4036812,
+        "total_output": 41910,
+        "total": 4078722,
+        "total_reasoning": 0,
+        "avg_input": 1009203.0,
+        "avg_output": 10477.5,
+        "avg_total": 1019680.5,
+        "avg_reasoning": 0.0
+      },
+      "turn_usage": {
+        "total_turns": 112,
+        "avg_turns": 28.0
+      }
+    },
+    "easyr1": {
+      "total": 4,
+      "success_rate": 50.0,
+      "avg_time": 396.97,
+      "token_usage": {
+        "total_input": 1640255,
+        "total_output": 9677,
+        "total": 1649932,
+        "total_reasoning": 0,
+        "avg_input": 410063.75,
+        "avg_output": 2419.25,
+        "avg_total": 412483.0,
+        "avg_reasoning": 0.0
+      },
+      "turn_usage": {
+        "total_turns": 73,
+        "avg_turns": 18.25
+      }
+    },
+    "claude-code": {
+      "total": 5,
+      "success_rate": 0.0,
+      "avg_time": 476.5,
+      "token_usage": {
+        "total_input": 2374278,
+        "total_output": 42213,
+        "total": 2416491,
+        "total_reasoning": 0,
+        "avg_input": 474855.6,
+        "avg_output": 8442.6,
+        "avg_total": 483298.2,
+        "avg_reasoning": 0.0
+      },
+      "turn_usage": {
+        "total_turns": 99,
+        "avg_turns": 19.8
+      }
+    },
+    "missing-semester": {
+      "total": 3,
+      "success_rate": 66.67,
+      "avg_time": 513.16,
+      "token_usage": {
+        "total_input": 3016985,
+        "total_output": 15148,
+        "total": 3032133,
+        "total_reasoning": 0,
+        "avg_input": 1005661.67,
+        "avg_output": 5049.33,
+        "avg_total": 1010711.0,
+        "avg_reasoning": 0.0
+      },
+      "turn_usage": {
+        "total_turns": 83,
+        "avg_turns": 27.67
+      }
+    },
+    "build_your_own_x": {
+      "total": 2,
+      "success_rate": 100.0,
+      "avg_time": 413.56,
+      "token_usage": {
+        "total_input": 1629885,
+        "total_output": 4582,
+        "total": 1634467,
+        "total_reasoning": 0,
+        "avg_input": 814942.5,
+        "avg_output": 2291.0,
+        "avg_total": 817233.5,
+        "avg_reasoning": 0.0
+      },
+      "turn_usage": {
+        "total_turns": 45,
+        "avg_turns": 22.5
+      }
+    }
+  }
+}

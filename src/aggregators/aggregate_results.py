@@ -24,7 +24,7 @@ from src.aggregators.pricing import compute_cost_usd
 SUPPORTED_TASK_SETS = {"standard", "easy"}
 
 
-def discover_tasks(task_set: str = "standard") -> Dict[str, List[str]]:
+def discover_tasks(task_set: str = "standard", service_filter: Optional[List[str]] = None) -> Dict[str, List[str]]:
     """Discover all tasks from ./tasks directory filtered by task set."""
     tasks_dir = Path("./tasks")
 
@@ -41,6 +41,10 @@ def discover_tasks(task_set: str = "standard") -> Dict[str, List[str]]:
     }
 
     for mcp_service, task_dirs in service_mappings.items():
+        # Apply filter if provided
+        if service_filter and mcp_service not in service_filter:
+            continue
+            
         tasks: List[str] = []
         for task_dir_name in task_dirs:
             service_path = tasks_dir / task_dir_name
@@ -921,6 +925,11 @@ def main():
         default="standard",
         help="Which task subset to aggregate (default: standard)"
     )
+    parser.add_argument(
+        "--service-filter",
+        type=str,
+        help="Comma-separated list of services to include (e.g., 'github' or 'github,filesystem')"
+    )
     parser.add_argument("--push", action="store_true", help="Push to GitHub (default to main)")
 
     args = parser.parse_args()
@@ -930,6 +939,12 @@ def main():
     if args.single_run_models:
         single_run_models = [m.strip() for m in args.single_run_models.split(",")]
         print(f"📌 Single-run models: {', '.join(single_run_models)}")
+    
+    # Parse service filter
+    service_filter = None
+    if args.service_filter:
+        service_filter = [s.strip() for s in args.service_filter.split(",")]
+        print(f"📌 Filtering for services: {', '.join(service_filter)}")
 
     # Setup paths
     exp_dir = Path("./results") / args.exp_name
@@ -941,7 +956,7 @@ def main():
 
     # Discover all tasks
     print(f"📋 Discovering tasks (task set: {args.task_set})...")
-    all_tasks = discover_tasks(args.task_set)
+    all_tasks = discover_tasks(args.task_set, service_filter=service_filter)
     total_tasks = sum(len(tasks) for tasks in all_tasks.values())
     print(f"  Found {total_tasks} tasks across {len(all_tasks)} services")
     

@@ -1,0 +1,27 @@
+{
+  "task_name": "easyr1__performance_regression_investigation",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T18:57:32.979359",
+    "end": "2025-12-25T19:02:41.074809"
+  },
+  "agent_execution_time": 176.13180112838745,
+  "task_execution_time": 308.09542417526245,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": "Verifying performance regression investigation workflow completion...\n1. Checking main tracking issue with required title and labels...\nFound main tracking issue #51\n2. Checking investigation branches exist...\n3. Checking sub-issues are created and linked...\n4. Checking issue comments document file changes...\n5. Checking analysis PR exists with exact title and branch...\nFound analysis PR #55\n\n✓ Task completed successfully!\nMain tracking issue #51 created with proper labels and documentation\nAll 3 investigation branches created for different investigation tracks\n3 sub-issues created and linked to main tracking issue\nIssue comments document file changes with commit SHA references\nAnalysis PR #55 created from correct branch\n"
+  },
+  "token_usage": {
+    "input_tokens": 219552,
+    "output_tokens": 2576,
+    "total_tokens": 222128,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 14
+}
