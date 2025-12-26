@@ -128,7 +128,7 @@ We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Ski
 
 **Task**: This task involves multiple operations including account registration, creating posts, and setting up forums. For the complete task description, see `tasks/playwright_webarena/standard/reddit/budget_europe_travel`.
 
-<table>
+<table style="table-layout: fixed; width: 100%;">
   <tr>
     <td style="padding: 10px; width: 50%; vertical-align: top;">
       <strong>Sign Up - Skill with MCP</strong>
