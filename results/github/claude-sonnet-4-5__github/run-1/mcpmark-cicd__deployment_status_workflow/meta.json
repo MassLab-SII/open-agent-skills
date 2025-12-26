@@ -1,0 +1,27 @@
+{
+  "task_name": "mcpmark-cicd__deployment_status_workflow",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T19:43:43.815127",
+    "end": "2025-12-25T19:50:02.325046"
+  },
+  "agent_execution_time": 364.92621302604675,
+  "task_execution_time": 378.50991010665894,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Verification failed with no error message",
+    "verification_output": "🔍 Starting Deployment Status Workflow Verification\n============================================================\n⏳ Waiting for deployment status workflows to complete...\n   Status: 3 completed, 0 running/queued\n⚠️ Warning: 3 workflow runs failed, but continuing verification...\n✅ All workflows completed. Found 3 completed runs.\n⏳ Additional wait for deployment processing to complete...\n\n⚙️ Verifying deployment status workflow runs...\n❌ Workflow Runs Verification Failed:\n   - No successful workflow runs found\n\n============================================================\n❌ Deployment Status Workflow verification FAILED!\n   Some components did not meet the expected automation requirements.\n"
+  },
+  "token_usage": {
+    "input_tokens": 618007,
+    "output_tokens": 8258,
+    "total_tokens": 626265,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 27
+}

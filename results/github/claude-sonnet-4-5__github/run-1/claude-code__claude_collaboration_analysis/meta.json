@@ -1,0 +1,27 @@
+{
+  "task_name": "claude-code__claude_collaboration_analysis",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T18:12:33.892410",
+    "end": "2025-12-25T18:17:23.982457"
+  },
+  "agent_execution_time": 145.69429993629456,
+  "task_execution_time": 290.08999490737915,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Error: Unique collaborators should be 6, found 7\n",
+    "verification_output": "Verifying Claude collaboration analysis task...\n1. Checking if CLAUDE_COLLABORATION_ANALYSIS.md exists...\n✓ CLAUDE_COLLABORATION_ANALYSIS.md found\n2. Checking required sections...\n✓ All required sections present\n3. Validating summary statistics...\n"
+  },
+  "token_usage": {
+    "input_tokens": 273444,
+    "output_tokens": 2029,
+    "total_tokens": 275473,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 13
+}

@@ -1,0 +1,27 @@
+{
+  "task_name": "harmony__multi_branch_commit_aggregation",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T19:25:24.805537",
+    "end": "2025-12-25T19:31:43.967843"
+  },
+  "agent_execution_time": 317.66355776786804,
+  "task_execution_time": 379.16227412223816,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Missing or incorrect contributor entry: scott-oai: 35 commits\n",
+    "verification_output": "✓ Branch 'history-report-2025' exists\n✓ BRANCH_COMMITS.json has correct structure and data\n"
+  },
+  "token_usage": {
+    "input_tokens": 610954,
+    "output_tokens": 4011,
+    "total_tokens": 614965,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 27
+}

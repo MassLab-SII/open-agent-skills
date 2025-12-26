@@ -1,0 +1,27 @@
+{
+  "task_name": "easyr1__qwen3_issue_management",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T19:02:41.076838",
+    "end": "2025-12-25T19:06:50.967156"
+  },
+  "agent_execution_time": 126.69591498374939,
+  "task_execution_time": 249.890310049057,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Search API error: 422\nError: Could not search for Qwen3 issues\n",
+    "verification_output": "Verifying Qwen3 issue reopening workflow...\n1. Checking if Qwen3 issues are reopened and tagged...\n"
+  },
+  "token_usage": {
+    "input_tokens": 137529,
+    "output_tokens": 1308,
+    "total_tokens": 138837,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 13
+}

@@ -1,0 +1,27 @@
+{
+  "task_name": "claude-code__automated_changelog_generation",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T18:00:40.589698",
+    "end": "2025-12-25T18:12:33.891076"
+  },
+  "agent_execution_time": 562.621349811554,
+  "task_execution_time": 713.3013677597046,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Error: CHANGELOG-GENERATED.md missing required sections\n",
+    "verification_output": "Verifying changelog and migration documentation workflow...\n1. Verifying documentation branch exists...\n✓ Documentation branch created\n2. Verifying CHANGELOG-GENERATED.md...\n"
+  },
+  "token_usage": {
+    "input_tokens": 978341,
+    "output_tokens": 22305,
+    "total_tokens": 1000646,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 27
+}

@@ -1,0 +1,27 @@
+{
+  "task_name": "claude-code__label_color_standardization",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T18:32:54.380680",
+    "end": "2025-12-25T18:40:23.078572"
+  },
+  "agent_execution_time": 300.95894598960876,
+  "task_execution_time": 448.69785499572754,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Error: Documentation table incomplete, found only 9 labels\n",
+    "verification_output": "Verifying label color standardization workflow completion...\n1. Verifying feature branch exists...\n2. Verifying label documentation file...\n"
+  },
+  "token_usage": {
+    "input_tokens": 357189,
+    "output_tokens": 7436,
+    "total_tokens": 364625,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 23
+}

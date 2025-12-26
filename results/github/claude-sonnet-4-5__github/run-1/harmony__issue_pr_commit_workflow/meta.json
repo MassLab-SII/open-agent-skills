@@ -1,0 +1,27 @@
+{
+  "task_name": "harmony__issue_pr_commit_workflow",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "github",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-25T19:15:02.896421",
+    "end": "2025-12-25T19:20:45.542209"
+  },
+  "agent_execution_time": 273.7924859523773,
+  "task_execution_time": 342.6457562446594,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": "Verifying GitHub issue-PR-commit workflow completion...\n1. Verifying feature branch exists...\n2. Verifying concurrent_loading.rs implementation...\n3. Verifying issue creation and content...\n4. Verifying pull request creation and content...\n5. Verifying PR review comments...\n6. Verifying issue comment referencing PR...\n7. Verifying issue closure...\n\n✓ All verification checks passed!\nIssue-PR-commit workflow completed successfully:\n  - Issue #27: Fix race condition in HarmonyEncoding concurrent access during tokenizer loading\n  - PR #28: Fix race condition in tokenizer loading - resolve threading issues with mutex implementation\n  - Branch: fix/race-condition-tokenizer-loading\n"
+  },
+  "token_usage": {
+    "input_tokens": 338357,
+    "output_tokens": 7151,
+    "total_tokens": 345508,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 20
+}
