@@ -4,7 +4,7 @@ CLAUDE.md
 .gemini
 results
 materials
-scripts
+/scripts
 !.github/scripts
 .nfs*
 .idea

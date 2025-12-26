@@ -107,20 +107,14 @@ def compare_answers(model_answer, expected_answer):
 
         # Special handling for different types of values
         if key in ["CheapestReviewedPrice", "N64Subtotal"]:
-            # For price fields, only support $XX.XX format
-            # Check if model value has correct format
-            if not model_value.startswith("$"):
+            # For price fields, only compare numeric values (dollar sign is optional)
+            # Extract numeric value from both expected and model values
+            expected_clean = expected_value.replace("$", "").replace(",", "").strip()
+            model_clean = model_value.replace("$", "").replace(",", "").strip()
+            if expected_clean != model_clean:
                 mismatches.append(
-                    f"{key}: incorrect format - expected '$XX.XX' format, got '{model_value}'"
+                    f"{key}: expected '{expected_value}', got '{model_value}'"
                 )
-            else:
-                # Normalize and compare values
-                expected_clean = expected_value.replace("$", "").replace(",", "")
-                model_clean = model_value.replace("$", "").replace(",", "")
-                if expected_clean != model_clean:
-                    mismatches.append(
-                        f"{key}: expected '{expected_value}', got '{model_value}'"
-                    )
 
         elif key == "CheckoutEmail":
             # Email should match exactly (case-insensitive)

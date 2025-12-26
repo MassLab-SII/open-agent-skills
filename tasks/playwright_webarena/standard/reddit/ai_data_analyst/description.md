@@ -22,6 +22,7 @@ I'm conducting an AI research analysis and need specific data from this forum pl
    - Body text must be EXACTLY these lines without anything (keep the keys as-is, only replace the values after the pipe, follow the markdown format):
 
 ```
+<answer>
 - Deeplearning_Post_Count|FILL_VALUE
 - ChatGPT_Tool_Vote_Count|FILL_VALUE
 - Transformer_Third_Result|FILL_VALUE
@@ -29,4 +30,5 @@ I'm conducting an AI research analysis and need specific data from this forum pl
 - Page2_Top_Post_Votes|FILL_VALUE
 - Page2_Last_Comment_Username|FILL_VALUE
 - Page2_Last_Comment_Text|FILL_VALUE
+</answer>
 ```
