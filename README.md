@@ -203,10 +203,10 @@ We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Ski
   </tr>
   <tr>
     <td style="padding: 10px; width: 50%; vertical-align: top;">
-      <video src="assets/videos/full_demo_skill_with_mcp.mp4" controls muted preload="metadata" width="100%" style="border-radius: 8px;"></video>
+      <video src="https://raw.githubusercontent.com/zjtco-yr/open-agent-skills/playwright/assets/videos/full_demo_skill_with_mcp.mp4" controls muted preload="metadata" width="100%" style="border-radius: 8px;"></video>
     </td>
     <td style="padding: 10px; width: 50%; vertical-align: top;">
-      <video src="assets/videos/full_demo_mcp.mp4" controls muted preload="metadata" width="100%" style="border-radius: 8px;"></video>
+      <video src="https://raw.githubusercontent.com/zjtco-yr/open-agent-skills/playwright/assets/videos/full_demo_mcp.mp4" controls muted preload="metadata" width="100%" style="border-radius: 8px;"></video>
     </td>
   </tr>
 </table>
