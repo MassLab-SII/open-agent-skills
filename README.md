@@ -60,9 +60,9 @@ OPENAI_BASE_URL="https://api.openai.com/v1"
 OPENAI_API_KEY="sk-..."
 
 # Optional: Notion (only for Notion tasks)
-SOURCE_NOTION_API_KEY="your-source-notion-api-key"
-EVAL_NOTION_API_KEY="your-eval-notion-api-key"
-EVAL_PARENT_PAGE_TITLE="MCPMark Eval Hub"
+# SOURCE_NOTION_API_KEY="your-source-notion-api-key"
+# EVAL_NOTION_API_KEY="your-eval-notion-api-key"
+# EVAL_PARENT_PAGE_TITLE="MCPMark Eval Hub"
 
 # Optional: Playwright (only for Playwright tasks)
 PLAYWRIGHT_BROWSER="chromium"   # chromium | firefox
