@@ -16,6 +16,7 @@ I'm conducting research on NBA player discussions in online sports communities. 
    - Body text must be EXACTLY these lines without anything (keep the keys as-is, only replace the values after the colon, follow the markdown format):
 
 ```
+<answer>
 - Total_NBA_Posts|FILL_VALUE
 - Top1_Title|FILL_VALUE
 - Top1_Votes|FILL_VALUE
@@ -38,4 +39,5 @@ I'm conducting research on NBA player discussions in online sports communities. 
 - Top5_Comments|FILL_VALUE
 - Top5_Author|FILL_VALUE
 - BCLetsRide69_Total_Posts|FILL_VALUE
+</answer>
 ```

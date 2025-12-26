@@ -201,14 +201,18 @@ class SkillManager:
             Absolute path to the script if found, None otherwise
         """
         
-        # Search in all skill subdirectories
+        # Search in scripts/ subdirectory of all skill folders
         for skill_folder in self.skill_dir.iterdir():
             if not skill_folder.is_dir():
                 continue
             
-            script_path = skill_folder / script_name
+            scripts_dir = skill_folder / "scripts"
+            if not scripts_dir.is_dir():
+                continue
+            
+            script_path = scripts_dir / script_name
             if script_path.exists():
-                logger.debug(f"Located script '{script_name}' in {skill_folder.name}: {script_path}")
+                logger.debug(f"Located script '{script_name}' in {skill_folder.name}/scripts: {script_path}")
                 return script_path.resolve()
         
         logger.warning(f"Script '{script_name}' not found in any skill directory")
@@ -619,3 +623,5 @@ class SkillManager:
             logger.debug("No commands extracted from text")
         
         return command
+
+
