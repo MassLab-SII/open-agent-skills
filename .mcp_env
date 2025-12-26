@@ -1,6 +1,6 @@
-# Example: OpenAI
-OPENAI_BASE_URL="https://api.openai.com/v1"
-OPENAI_API_KEY="sk-..."
+# Example: OpenAI (other models can also use it)
+OPENAI_BASE_URL=""
+OPENAI_API_KEY=""
 
 # Optional: Notion (only for Notion tasks)
 SOURCE_NOTION_API_KEY="your-source-notion-api-key"

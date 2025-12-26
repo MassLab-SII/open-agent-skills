@@ -17,6 +17,7 @@ logs/*
 .DS_Store
 notion-sdk-py/
 github_state/*
+traj
 
 # for playwright cookies
 notion_state.json
