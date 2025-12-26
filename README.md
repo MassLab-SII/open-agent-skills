@@ -15,15 +15,20 @@
 
 ## 📖 Introduction
 
-**Open-Agent-Skills** is an open-source framework designed to enhance the efficiency of AI agents by providing domain-specific skills that work in conjunction with the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). While MCP provides agents with access to external tools and services, **Skills** framework teaches agents *how to use these tools effectively* for specific domains.
+As AI agents evolve, there is a growing need for modular, reusable approaches to equip them with domain-specific expertise while mitigating issues like excessive MCP context consumption. To address this, Anthropic introduced **[Agent Skills](https://agentskills.io/home)** as an open standard on December 18, 2025, allowing agents to dynamically load structured instructions and resources for more effective task execution. Although platforms such as **[OpenAI Codex](https://developers.openai.com/codex/skills/)** have adopted this standard, native support remains limited to specific ecosystems.
+
+However, many LLM providers have not yet adopted the Agent Skills standard, leaving this efficient approach temporarily inaccessible to a broader audience. We bridge this gap by providing a lightweight, efficient open-source framework fully compatible with the Agent Skills standard, extending these capabilities to any LLM provider. Our implementation focuses on the synergy between **Model Context Protocol (MCP)** and **Skills**: MCP provides access to external tools and systems, while Skills provide the procedural knowledge to utilize tools (including MCP) effectively. With our skill-based implementation, we achieved up to **~20x context reduction** compared to pure MCP approaches.
+
 
 This project builds upon [MCPMark](https://github.com/mcpmark/mcpmark), a comprehensive evaluation suite for assessing the agentic capabilities of frontier models. We extend MCPMark's benchmark capabilities by introducing a **skill-based Implementation**.
 
 ### Key Features
 
 - ⚡ **Lightweight Skill Implementation**: Built with a minimal framework approach, making skills implementation easy to read and quick to understand
+- 🔗 **Skill + MCP Integration**: See how skills leverage MCP's external knowledge capabilities and organize multiple MCP services to collaboratively complete tasks
 - 🔌 **Claude Agent Standard Compatible**: Skills can be directly executed in Claude and other compatible agent environments
 - 🔀 **LLM provider Agnostic**: Not limited to Claude or Codex — any LLM can leverage skills to enhance efficiency
+
 
 ---
 
@@ -38,7 +43,7 @@ This project builds upon [MCPMark](https://github.com/mcpmark/mcpmark), a compre
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/open-agent-skills.git
+git clone https://github.com/zjtco-yr/open-agent-skills.git
 cd open-agent-skills
 
 # Install with pip
