@@ -13,7 +13,7 @@
 > **"Model Context Protocol (MCP) connects Claude to third-party tools, and skills teach Claude how to use them well."**  
 > — *[Extending Claude's capabilities with skills and MCP servers](https://claude.com/blog/extending-claude-capabilities-with-skills-mcp-servers)*, Anthropic
 
-## Introduction
+## 📖 Introduction
 
 **Open-Agent-Skills** is an open-source framework designed to enhance the efficiency of AI agents by providing domain-specific skills that work in conjunction with the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). While MCP provides agents with access to external tools and services, **Skills** framework teaches agents *how to use these tools effectively* for specific domains.
 
@@ -27,7 +27,7 @@ This project builds upon [MCPMark](https://github.com/mcpmark/mcpmark), a compre
 
 ---
 
-## Installation
+## 🛠️ Installation
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ For more detailed environment configuration, service setup, and authentication i
 
 ---
 
-## Performance Results
+## 📊 Performance Results
 
 We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Skills **(Skill with MCP)** using the Claude-Sonnet-4.5 model. Results demonstrate that **Skill with MCP** achieves significant advantages in both **task performance** and **token efficiency**.
 
@@ -122,7 +122,7 @@ We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Ski
 
 ---
 
-## Demo: How Skills Work
+## 🎬 Demo: How Skills Work
 
 ### Example: budget_europe_travel in reddit
 
@@ -231,7 +231,7 @@ python -m pipeline \
 
 ---
 
-## Future Plans
+## 🚀 Future Plans
 
 We acknowledge that the current implementation has room for improvement. This project is intended as a **starting point** to demonstrate the potential of combining MCP with domain-specific skills.
 
@@ -251,7 +251,7 @@ We acknowledge that the current implementation has room for improvement. This pr
 
 ---
 
-## Security
+## 🔒 Security
 
 Security is a primary consideration in our skill execution framework. It inherits and leverages several security features from [MCPMark](https://github.com/eval-sys/mcpmark/), including:
 
@@ -263,7 +263,7 @@ However, we strongly recommend that you **always review skill scripts** before e
 
 ---
 
-## References & Resources
+## 📚 References & Resources
 
 ### Open Standards
 - **[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)** - Anthropic's protocol for connecting AI assistants to external tools
@@ -276,7 +276,7 @@ However, we strongly recommend that you **always review skill scripts** before e
 
 ---
 
-## Quick Start
+## ⚡ Quick Start
 After configuring the relevant APIs and Docker environment (if needed), you can run the following commands:
 
 ### Run a Playwright WebArena Task
@@ -300,7 +300,7 @@ python -m pipeline --mcp filesystem \
 ```
 
 
-## License
+## 📄 License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
