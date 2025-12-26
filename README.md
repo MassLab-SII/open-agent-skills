@@ -27,7 +27,7 @@ This project builds upon [MCPMark](https://github.com/mcpmark/mcpmark), a compre
 - ⚡ **Lightweight Skill Implementation**: Built with a minimal framework approach, making skills implementation easy to read and quick to understand
 - 🔗 **Skill + MCP Integration**: See how skills leverage MCP's external knowledge capabilities and organize multiple MCP services to collaboratively complete tasks
 - 🔌 **Claude Agent Standard Compatible**: Skills can be directly executed in Claude and other compatible agent environments
-- 🔀 **LLM provider Agnostic**: Not limited to Claude or Codex — any LLM can leverage skills to enhance efficiency
+- 🔀 **LLM provider Agnostic**: Not limited to Claude or Codex, any LLM can leverage skills to enhance efficiency
 
 
 ---
