@@ -304,6 +304,16 @@ python -m pipeline --mcp filesystem \
   --k 1
 ```
 
+### Run a Github Task
+
+```bash
+python -m pipeline --mcp github \
+  --models claude-sonnet-4.5 \
+  --tasks build_your_own_x/find_commit_date \
+  --exp-name github-test \
+  --k 1
+```
+
 
 ## 📄 License
 
