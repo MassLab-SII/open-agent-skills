@@ -276,7 +276,7 @@ However, we strongly recommend that you **always review skill scripts** before e
 
 ---
 
-## ⚡ Quick Start
+## ▶️ Quick Start
 After configuring the relevant APIs and Docker environment (if needed), you can run the following commands:
 
 ### Run a Playwright WebArena Task
