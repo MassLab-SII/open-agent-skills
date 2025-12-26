@@ -102,7 +102,7 @@ We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Ski
 
 | Benchmark | MCP Tokens | Skills Tokens | Reduction |
 |:----------|:----------:|:-------------:|:---------:|
-| **GitHub** | 6.10M | 2.47M | **59.48%** |
+| **GitHub** | 7.36M | 4.47M | **39.25%** |
 | **Filesystem** | 2.27M | 1.55M | **31.55%** |
 | **Playwright WebArena** | 10.25M | 8.27M | **19.30%** |
 
@@ -115,7 +115,7 @@ We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Ski
 | Task | MCP Tokens | Skills Tokens | Reduction |
 |:-----|:----------:|:-------------:|:---------:|
 | `english_talent` (Filesystem) | 1.05M | 0.053M | **95.00%** (~20x) |
-| `find_commit_date` (GitHub) | 1.21M | 0.20M | **83.31%** |
+| `find_commit_date` (GitHub) | 1.21M | 0.23M | **80.84%** |
 | `marketing_customer_analysis`<br>(Playwright_webarena) | 1.45M | 0.67M | **54.00%** |
 
 </div>
@@ -123,7 +123,7 @@ We conducted preliminary benchmark evaluations comparing MCP with Open-Agent-Ski
 ### Key Insights
 
 1. **Significant Accuracy Improvement**: Average Pass@1 accuracy increased by ~**18 percentage points** across all three benchmarks
-2. **Excellent Token Efficiency**: Token consumption for successful tasks reduced by **20-60%**, with extreme cases reaching **80-95%**
+2. **Excellent Token Efficiency**: Token consumption for successful tasks reduced by **20-40%**, with extreme cases reaching **80-95%**
 
 ---
 
