@@ -1,0 +1,27 @@
+{
+  "task_name": "reddit__buyitforlife_research",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-19T11:28:52.854774",
+    "end": "2025-12-19T11:32:11.291278"
+  },
+  "agent_execution_time": 171.079491853714,
+  "task_execution_time": 198.43644905090332,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": ""
+  },
+  "token_usage": {
+    "input_tokens": 1400439,
+    "output_tokens": 2616,
+    "total_tokens": 1403055,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 17
+}

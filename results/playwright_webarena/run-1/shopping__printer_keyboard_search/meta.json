@@ -1,0 +1,27 @@
+{
+  "task_name": "shopping__printer_keyboard_search",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-17T17:01:23.661282",
+    "end": "2025-12-17T17:05:14.660280"
+  },
+  "agent_execution_time": 197.24377822875977,
+  "task_execution_time": 230.99893808364868,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Found model response, parsing answer format...\n\n=== Model Answer Parsed ===\nPrinterSKUID: B09BDR4DLY\nPrinterPrice: $7.03\nKeyboardSKUID: B08L9CTD9M\nKeyboardPrice: $57.69\nKeyboardReviews: 4\nKeyboardRating: 55%\n\n=== Answer Comparison Mismatches ===\n✗ PrinterSKUID: expected 'B09J8KQX6V', got 'B09BDR4DLY'\n✗ PrinterPrice: expected '$248.04', got '$7.03'\n✗ KeyboardSKUID: expected 'B08JD7F3F5', got 'B08L9CTD9M'\n✗ KeyboardPrice: expected '$85.99', got '$57.69'\n✗ KeyboardReviews: expected '12', got '4'\n✗ KeyboardRating: expected '77%', got '55%'\n\nModel answer does not match expected answer\n",
+    "verification_output": "MCP_MESSAGES: results/test_shopping2/claude-sonnet-4-5__playwright/run-1/shopping__printer_keyboard_search/messages.json\n"
+  },
+  "token_usage": {
+    "input_tokens": 1159880,
+    "output_tokens": 2580,
+    "total_tokens": 1162460,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 19
+}

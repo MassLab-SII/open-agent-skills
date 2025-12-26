@@ -1,0 +1,27 @@
+{
+  "task_name": "shopping_admin__search_filtering_operations",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-24T17:20:06.621302",
+    "end": "2025-12-24T17:26:14.742769"
+  },
+  "agent_execution_time": 349.6800708770752,
+  "task_execution_time": 368.1214120388031,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": "{\"valid\": true, \"reason\": \"All complex search and filtering operations completed successfully\"}\n"
+  },
+  "token_usage": {
+    "input_tokens": 1352290,
+    "output_tokens": 6523,
+    "total_tokens": 1358813,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 36
+}

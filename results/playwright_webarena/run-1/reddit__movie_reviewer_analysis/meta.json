@@ -1,0 +1,27 @@
+{
+  "task_name": "reddit__movie_reviewer_analysis",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-19T20:02:52.448490",
+    "end": "2025-12-19T20:06:30.197287"
+  },
+  "agent_execution_time": 197.07360291481018,
+  "task_execution_time": 217.74874091148376,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Navigating to forum...\nNot logged in, attempting to login...\nSuccessfully logged in as movie_reviewer_2024\nNavigating to movies forum...\nLooking for submission 'Wonderful Movies Analysis: Community Favorites [2024]'...\nFound submission content using selector: .submission__body\nSubmission content found, parsing data...\nRaw content: Total_Year_Posts|1\nTop1_Title|Who will win the Oscar for ACTRESS IN A SUPPORTING ROLE?\nTop1_Upvotes|9933\nTop1_Comments|23\nTop2_Title|Who will win the Oscar for FILM EDITING?\nTop2_Upvotes|7720\nTop2_Com...\nExtracted data: {'Total_Year_Posts': '1', 'Top1_Title': 'Who will win the Oscar for ACTRESS IN A SUPPORTING ROLE?', 'Top1_Upvotes': '9933', 'Top1_Comments': '23', 'Top2_Title': 'Who will win the Oscar for FILM EDITING?', 'Top2_Upvotes': '7720', 'Top2_Comments': '20', 'Top3_Title': 'Cindy Williams Dies: Laverne & Shirley Star Who Appeared In American Graffiti & The Conversation Was 75', 'Top3_Upvotes': '5268', 'Top3_Comments': '190', 'Rittenhouse_Upvotes': '2761', 'Rittenhouse_Comments': '182', 'Total_Image_Posts_5Pages': '6'}\nLoaded expected values from label.txt\nError: Validation failed with the following issues:\n  - Top3_Title mismatch: got 'Cindy Williams Dies: Laverne & Shirley Star Who Appeared In American Graffiti & The Conversation Was 75', expected 'Cindy Williams Dies: 'Laverne & Shirley' Star Who Appeared In 'American Graffiti' & 'The Conversation' Was 75'\n",
+    "verification_output": "Using base URL: http://localhost:9999\n"
+  },
+  "token_usage": {
+    "input_tokens": 923680,
+    "output_tokens": 3193,
+    "total_tokens": 926873,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 17
+}

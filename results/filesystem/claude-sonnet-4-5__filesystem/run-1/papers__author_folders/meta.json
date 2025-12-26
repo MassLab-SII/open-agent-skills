@@ -1,0 +1,27 @@
+{
+  "task_name": "papers__author_folders",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "filesystem",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-24T21:01:18.172491",
+    "end": "2025-12-24T21:05:26.235689"
+  },
+  "agent_execution_time": 247.72658896446228,
+  "task_execution_time": 248.06319499015808,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Verification failed with no error message",
+    "verification_output": "🔍 Verifying paper organization in: /Users/zhaoji/project/mcpmark/.mcpmark_backups/backup_filesystem_papers_author_folders_95587\n\n📊 Analyzing papers...\n\n📋 Checking: Directory existence\n✅ Both required directories exist\n\n📋 Checking: Original files intact\n✅ Original HTML files remain intact (83 files)\n\n📋 Checking: Frequent authors organization\n❌ Missing directory for frequent author: jason_wei\n❌ Missing directory for frequent author: hongsheng_li\n❌ Missing directory for frequent author: liang_zhao\n❌ Missing directory for frequent author: jinguo_zhu\n❌ Missing directory for frequent author: xiaokang_chen\n❌ Missing directory for frequent author: zhiyu_wu\n❌ Missing directory for frequent author: yiyang_ma\n❌ Missing directory for frequent author: xingchao_liu\n❌ Missing directory for frequent author: zizheng_pan\n❌ Missing directory for frequent author: wen_liu\n❌ Missing directory for frequent author: zhenda_xie\n❌ Missing directory for frequent author: xingkai_yu\n❌ Missing directory for frequent author: chong_ruan\n❌ Missing directory for frequent author: zhe_chen\n❌ Missing directory for frequent author: yu_qiao\n❌ Missing directory for frequent author: wenhai_wang\n❌ Missing directory for frequent author: haowei_zhang\n\n📋 Checking: 2025 authors organization\n❌ Missing directory for 2025 author: hongsheng_li\n❌ Missing directory for 2025 author: haoyu_lu\n❌ Missing directory for 2025 author: zheng_zhang\n\n📋 Checking: Naming conventions\n✅ All author folder names follow correct naming convention\n\n❌ Some verification checks failed!\n"
+  },
+  "token_usage": {
+    "input_tokens": 1905643,
+    "output_tokens": 7088,
+    "total_tokens": 1912731,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 24
+}

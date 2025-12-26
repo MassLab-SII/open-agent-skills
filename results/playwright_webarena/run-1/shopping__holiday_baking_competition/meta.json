@@ -1,0 +1,27 @@
+{
+  "task_name": "shopping__holiday_baking_competition",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-17T15:10:37.124505",
+    "end": "2025-12-17T15:17:23.799259"
+  },
+  "agent_execution_time": 376.94094705581665,
+  "task_execution_time": 406.6746928691864,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": "MCP_MESSAGES: results/test_shopping2/claude-sonnet-4-5__playwright/run-1/shopping__holiday_baking_competition/messages.json\n"
+  },
+  "token_usage": {
+    "input_tokens": 3328676,
+    "output_tokens": 4452,
+    "total_tokens": 3333128,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 33
+}

@@ -1,0 +1,27 @@
+{
+  "task_name": "folder_structure__structure_analysis",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "filesystem",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-24T20:29:38.825434",
+    "end": "2025-12-24T20:30:20.627904"
+  },
+  "agent_execution_time": 41.73863887786865,
+  "task_execution_time": 41.8024640083313,
+  "execution_result": {
+    "success": false,
+    "error_message": null,
+    "verification_error": "Verification failed with no error message",
+    "verification_output": "🔍 Verifying Directory Structure Analysis Task in: /Users/zhaoji/project/mcpmark/.mcpmark_backups/backup_filesystem_folder_structure_structure_analysis_86630\n\n--- Structure Analysis File Exists ---\n✅ structure_analysis.txt file found\n\n--- File is Readable ---\n✅ structure_analysis.txt file is readable\n\n--- Subtask 1: File Statistics ---\n📊 Found: files=69, folders=52, size=58097\n❌ Folder count must be 51, found: 52\n\n--- Subtask 2: Depth Analysis ---\n❌ Depth must be 7, found: 6\n\n--- Subtask 3: File Type Classification ---\n📁 Found: txt=68, py=1\n✅ File type classification verified: txt=68, py=1\n\n--- File Format ---\n✅ File format is acceptable\n\n==================================================\n❌ Structure Analysis verification: FAIL\n"
+  },
+  "token_usage": {
+    "input_tokens": 32716,
+    "output_tokens": 896,
+    "total_tokens": 33612,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 6
+}

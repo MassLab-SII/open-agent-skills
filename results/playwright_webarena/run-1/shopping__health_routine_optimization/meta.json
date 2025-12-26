@@ -1,0 +1,27 @@
+{
+  "task_name": "shopping__health_routine_optimization",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-17T15:24:26.668701",
+    "end": "2025-12-17T15:28:47.964437"
+  },
+  "agent_execution_time": 233.3787100315094,
+  "task_execution_time": 261.29568362236023,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": "MCP_MESSAGES: results/test_shopping2/claude-sonnet-4-5__playwright/run-1/shopping__health_routine_optimization/messages.json\n"
+  },
+  "token_usage": {
+    "input_tokens": 1543527,
+    "output_tokens": 2600,
+    "total_tokens": 1546127,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 24
+}

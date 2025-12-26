@@ -1,0 +1,27 @@
+{
+  "task_name": "shopping_admin__marketing_customer_analysis",
+  "model_name": "claude-sonnet-4.5",
+  "litellm_run_model_name": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning_effort": "default",
+  "mcp": "playwright_webarena",
+  "timeout": 3600,
+  "time": {
+    "start": "2025-12-18T10:24:20.455153",
+    "end": "2025-12-18T10:27:55.985653"
+  },
+  "agent_execution_time": 179.07537484169006,
+  "task_execution_time": 215.53044319152832,
+  "execution_result": {
+    "success": true,
+    "error_message": null,
+    "verification_error": null,
+    "verification_output": "MCP_MESSAGES: results/test_shopping_admin/claude-sonnet-4-5__playwright/run-1/shopping_admin__marketing_customer_analysis/messages.json\n"
+  },
+  "token_usage": {
+    "input_tokens": 664602,
+    "output_tokens": 2182,
+    "total_tokens": 666784,
+    "reasoning_tokens": 0
+  },
+  "turn_count": 19
+}
