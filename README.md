@@ -1,6 +1,6 @@
 <div align="center">
 
-![Open Agent Skills](assets/logo.png)
+<img src="assets/logo.png" alt="Open Agent Skills" width="400">
 
 **Enhancing AI Agent Efficiency Through Domain-Specific Skills**
 
