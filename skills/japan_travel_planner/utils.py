@@ -40,6 +40,7 @@ class NotionMCPTools:
             "Authorization": f"Bearer {self.api_key}",
             "Notion-Version": "2022-06-28"
         }
+        # 2022-06-28
         
         params = StdioServerParameters(
             command="npx",
